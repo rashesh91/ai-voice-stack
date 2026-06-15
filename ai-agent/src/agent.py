@@ -133,14 +133,16 @@ async def entrypoint(ctx: JobContext) -> None:
             ms = (time.monotonic() - call_start) * 1000
             logger.info("latency_ms=%.0f room=%s", ms, room_name)
 
-    def on_agent_speech(event):
-        text = getattr(event, "text", "") or getattr(event, "transcript", "")
-        if text:
-            asyncio.create_task(log_call_event(room_name, "agent_speech", text))
+    def on_conversation_item(event):
+        item = event.item
+        if getattr(item, "role", "") == "assistant":
+            text = getattr(item, "text_content", "") or ""
+            if text:
+                asyncio.create_task(log_call_event(room_name, "agent_speech", text))
 
     session.on("user_input_transcribed", on_transcript)
     session.on("agent_state_changed", on_agent_state)
-    session.on("agent_speech_committed", on_agent_speech)
+    session.on("conversation_item_added", on_conversation_item)
 
     agent = VoiceAgent(instructions=prompt)
     await session.start(agent, room=ctx.room, capture_run=True)
