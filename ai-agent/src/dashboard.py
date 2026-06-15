@@ -43,12 +43,45 @@ async def _get_pool() -> asyncpg.Pool:
     return _pool
 
 
+# Cycling dialogue for the live simulator (user_speech, agent_speech) pairs
+_LIVE_DIALOGUES = {
+    "demo_live_priya_9876543211": [
+        ("मेरा इंटरनेट बहुत धीमा चल रहा है।",
+         "मैं आपकी लाइन चेक कर रहा हूँ। कृपया अपना राउटर रीस्टार्ट करें और 2 मिनट बाद चेक करें।"),
+        ("रीस्टार्ट किया लेकिन अभी भी धीमा है।",
+         "आपके एरिया में नेटवर्क मेंटेनेंस चल रही है जो 30 मिनट में पूरी हो जाएगी।"),
+        ("ठीक है। मेरी EMI का अगला पेमेंट कब है?",
+         "आपकी अगली EMI ₹199 की 25 जून 2026 को देय है।"),
+        ("क्या मैं EMI डेट बदल सकती हूँ?",
+         "जी हाँ, आप EMI डेट महीने में एक बार बदल सकती हैं। कौन सी तारीख चाहिए?"),
+        ("1 तारीख कर दीजिए।",
+         "आपकी EMI डेट 1 जुलाई 2026 से 1 तारीख पर सेट कर दी गई है।"),
+    ],
+    "demo_live_vijay_7700123456": [
+        ("My bill shows a late fee of ₹50. Can you waive it?",
+         "I can see your bill of ₹1200 was due on 15 Jun. Since this is your first late payment, I can waive the ₹50 fee as a one-time courtesy."),
+        ("Yes please, thank you!",
+         "Done! The ₹50 late fee has been waived. Your net payable amount is now ₹1200."),
+        ("Can I set up auto-pay to avoid this in future?",
+         "Absolutely! I can set up auto-pay via your UPI or bank account. Which would you prefer?"),
+        ("UPI please, 7700123456@paytm",
+         "Auto-pay has been set up with UPI ID 7700123456@paytm. Your bill will be auto-debited on the 15th every month."),
+        ("What is my 5G coverage status?",
+         "Your area has 5G coverage on our premium band. You're already on the 5G Premium 200GB plan so you're all set!"),
+    ],
+}
+
+_sim_indices: dict[str, int] = {}
+
+
 async def _seed_dummy_calls(pool: asyncpg.Pool):
     async with pool.acquire() as conn:
         count = await conn.fetchval("SELECT COUNT(*) FROM call_events")
         if count > 0:
             return
-        rows = [
+
+        # --- Completed calls (older, have call_ended) ---
+        ended_rows = [
             ("demo_room_rajesh_9876543210_001", "call_started",  ""),
             ("demo_room_rajesh_9876543210_001", "user_speech",   "नमस्ते, मेरा बिल कितना है?"),
             ("demo_room_rajesh_9876543210_001", "agent_speech",  "नमस्ते! आपका इस महीने का बिल ₹450 है, जो 20 जून 2026 तक देय है।"),
@@ -57,37 +90,88 @@ async def _seed_dummy_calls(pool: asyncpg.Pool):
             ("demo_room_rajesh_9876543210_001", "call_ended",    ""),
             ("demo_room_amit_9123456789_002",   "call_started",  ""),
             ("demo_room_amit_9123456789_002",   "user_speech",   "My account is blocked, please help me."),
-            ("demo_room_amit_9123456789_002",   "agent_speech",  "I can see your account ACC003 is blocked due to a pending payment of ₹320. Would you like to pay now to restore service immediately?"),
+            ("demo_room_amit_9123456789_002",   "agent_speech",  "I can see your account ACC003 is blocked due to a pending payment of ₹320. Would you like to pay now?"),
             ("demo_room_amit_9123456789_002",   "user_speech",   "Yes, how do I pay via UPI?"),
-            ("demo_room_amit_9123456789_002",   "agent_speech",  "You can scan our QR code on the app or use UPI ID: aivoice@upi. Once payment is confirmed, your service will restore within 30 minutes."),
-            ("demo_room_amit_9123456789_002",   "user_speech",   "Okay done, I paid. Thank you!"),
-            ("demo_room_amit_9123456789_002",   "agent_speech",  "Great! Payment received. Your service will be restored shortly. Is there anything else I can help you with?"),
+            ("demo_room_amit_9123456789_002",   "agent_speech",  "You can use UPI ID: aivoice@upi. Service restores within 30 minutes of payment."),
+            ("demo_room_amit_9123456789_002",   "user_speech",   "Done, I paid. Thank you!"),
+            ("demo_room_amit_9123456789_002",   "agent_speech",  "Great! Payment received. Your service will be restored shortly."),
             ("demo_room_amit_9123456789_002",   "call_ended",    ""),
             ("demo_room_suresh_8877665544_003", "call_started",  ""),
             ("demo_room_suresh_8877665544_003", "user_speech",   "मेरे प्रीपेड प्लान की वैलिडिटी कब खत्म होगी?"),
-            ("demo_room_suresh_8877665544_003", "agent_speech",  "आपका प्रीपेड 28-दिन वाला ₹199 प्लान 8 जुलाई 2026 को समाप्त होगा। अभी आपके अकाउंट में ₹45 बैलेंस है।"),
+            ("demo_room_suresh_8877665544_003", "agent_speech",  "आपका ₹199 प्लान 8 जुलाई 2026 को समाप्त होगा। अभी बैलेंस ₹45 है।"),
             ("demo_room_suresh_8877665544_003", "user_speech",   "रिचार्ज कैसे करूँ?"),
             ("demo_room_suresh_8877665544_003", "agent_speech",  "आप हमारी ऐप, वेबसाइट, या नजदीकी रिटेलर से ₹199 का रिचार्ज करवा सकते हैं।"),
             ("demo_room_suresh_8877665544_003", "call_ended",    ""),
         ]
-        offsets = list(range(len(rows), 0, -1))
-        for (room, etype, content), offset in zip(rows, offsets):
+        offsets = list(range(len(ended_rows) + 20, 20, -1))
+        for (room, etype, content), offset in zip(ended_rows, offsets):
             await conn.execute(
                 "INSERT INTO call_events (room_name, event_type, content, created_at) "
                 "VALUES ($1, $2, $3, NOW() - ($4 * interval '30 seconds'))",
                 room, etype, content, offset,
             )
-        logger.info("Seeded %d dummy call events", len(rows))
+
+        # --- Active / live calls (NO call_ended, recent timestamps) ---
+        live_rows = [
+            ("demo_live_priya_9876543211",  "call_started", ""),
+            ("demo_live_priya_9876543211",  "user_speech",  "नमस्ते, मेरा नाम Priya Sharma है। मेरा अकाउंट नंबर ACC002 है।"),
+            ("demo_live_priya_9876543211",  "agent_speech", "नमस्ते Priya जी! आपका अकाउंट मिल गया। कैसे मदद करूँ?"),
+            ("demo_live_vijay_7700123456",  "call_started", ""),
+            ("demo_live_vijay_7700123456",  "user_speech",  "Hi, this is Vijay Singh. Account ACC005."),
+            ("demo_live_vijay_7700123456",  "agent_speech", "Hello Vijay! I can see your 5G Premium 200GB plan. How can I help you today?"),
+        ]
+        live_offsets = list(range(len(live_rows), 0, -1))
+        for (room, etype, content), offset in zip(live_rows, live_offsets):
+            await conn.execute(
+                "INSERT INTO call_events (room_name, event_type, content, created_at) "
+                "VALUES ($1, $2, $3, NOW() - ($4 * interval '8 seconds'))",
+                room, etype, content, offset,
+            )
+
+        logger.info("Seeded %d dummy call events (%d active, %d ended)",
+                    len(ended_rows) + len(live_rows), len(live_rows), len(ended_rows))
+
+
+async def _live_simulator(pool: asyncpg.Pool):
+    """Inject new STT+TTS turns into active demo calls every 6 seconds."""
+    await asyncio.sleep(4)
+    while True:
+        try:
+            async with pool.acquire() as conn:
+                for room, dialogues in _LIVE_DIALOGUES.items():
+                    is_ended = await conn.fetchval(
+                        "SELECT COUNT(*) FROM call_events WHERE room_name=$1 AND event_type='call_ended'", room)
+                    if is_ended:
+                        continue
+                    idx = _sim_indices.get(room, 0)
+                    if idx >= len(dialogues):
+                        continue
+                    user_text, agent_text = dialogues[idx]
+                    await conn.execute(
+                        "INSERT INTO call_events (room_name, event_type, content) VALUES ($1,'user_speech',$2)",
+                        room, user_text)
+                    await asyncio.sleep(1.5)
+                    await conn.execute(
+                        "INSERT INTO call_events (room_name, event_type, content) VALUES ($1,'agent_speech',$2)",
+                        room, agent_text)
+                    _sim_indices[room] = idx + 1
+        except Exception:
+            logger.exception("Simulator error")
+        await asyncio.sleep(6)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    sim_task = None
     try:
         pool = await _get_pool()
         await _seed_dummy_calls(pool)
+        sim_task = asyncio.create_task(_live_simulator(pool))
     except Exception:
         logger.exception("Dashboard DB connect failed")
     yield
+    if sim_task:
+        sim_task.cancel()
     if _pool:
         await _pool.close()
 
@@ -106,10 +190,11 @@ async def api_calls():
             SELECT room_name,
                    MIN(created_at) AS started_at,
                    MAX(created_at) AS last_event,
-                   COUNT(*) FILTER (WHERE event_type='user_speech') AS turns
+                   COUNT(*) FILTER (WHERE event_type='user_speech') AS turns,
+                   COUNT(*) FILTER (WHERE event_type='call_ended') = 0 AS is_active
             FROM call_events
             GROUP BY room_name
-            ORDER BY started_at DESC LIMIT 30
+            ORDER BY is_active DESC, started_at DESC LIMIT 30
         """)
     return JSONResponse(_serialize(rows))
 
@@ -186,6 +271,7 @@ async def api_seed_dummy():
     pool = await _get_pool()
     async with pool.acquire() as conn:
         await conn.execute("DELETE FROM call_events")
+    _sim_indices.clear()
     await _seed_dummy_calls(pool)
     return JSONResponse({"ok": True})
 
@@ -304,11 +390,21 @@ header::before{
   transition:background .1s;position:relative;
 }
 .call-row::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px;background:transparent;transition:.15s}
-.call-row:hover::before,.call-row.active::before{background:var(--blue)}
-.call-row:hover,.call-row.active{background:rgba(99,102,241,.05)}
+.call-row:hover::before,.call-row.sel::before{background:var(--blue)}
+.call-row.live-row::before{background:var(--green)}
+.call-row:hover,.call-row.sel{background:rgba(99,102,241,.05)}
+.call-row.live-row{background:rgba(16,185,129,.04)}
+.call-row.live-row:hover{background:rgba(16,185,129,.08)}
 .cr-room{font-size:.73rem;color:var(--blue-soft);font-family:'Courier New',monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.cr-meta{font-size:.62rem;color:var(--subtle);margin-top:3px;display:flex;gap:8px}
+.cr-meta{font-size:.62rem;color:var(--subtle);margin-top:3px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .cr-turns{color:var(--green);font-size:.6rem;font-weight:600}
+.live-badge{
+  display:inline-flex;align-items:center;gap:3px;
+  background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.3);
+  color:#34d399;font-size:.58rem;font-weight:700;padding:1px 6px;border-radius:9999px;
+  letter-spacing:.06em;
+}
+.live-badge-dot{width:5px;height:5px;border-radius:50%;background:#10b981;animation:pulse-g 1.2s ease-in-out infinite}
 
 /* Transcript chat */
 .chat-wrap{padding:12px 14px;display:flex;flex-direction:column;gap:8px}
@@ -487,9 +583,9 @@ tbody td{padding:9px 14px;vertical-align:middle;color:#cbd5e1}
     <!-- Left: call list -->
     <div class="panel">
       <div class="stats-strip">
-        <div class="stat"><div class="stat-v" id="s-calls">0</div><div class="stat-l">Calls</div></div>
+        <div class="stat"><div class="stat-v" id="s-calls">0</div><div class="stat-l">Total</div></div>
+        <div class="stat"><div class="stat-v" id="s-live" style="background:linear-gradient(135deg,#10b981,#34d399);-webkit-background-clip:text;-webkit-text-fill-color:transparent">0</div><div class="stat-l">Live Now</div></div>
         <div class="stat"><div class="stat-v" id="s-turns">0</div><div class="stat-l">STT Turns</div></div>
-        <div class="stat"><div class="stat-v" id="s-avg">0</div><div class="stat-l">Avg Turns</div></div>
       </div>
       <div class="panel-hdr">Recent Calls</div>
       <div class="panel-body" id="call-list"></div>
@@ -628,25 +724,31 @@ async function loadCalls() {
   const r = await fetch('/api/calls').catch(()=>null);
   if (!r) return;
   const calls = await r.json();
+  const liveCount = calls.filter(c=>c.is_active).length;
   document.getElementById('s-calls').textContent = calls.length;
-  document.getElementById('badge-calls').textContent = calls.length;
+  document.getElementById('s-live').textContent = liveCount;
+  document.getElementById('badge-calls').textContent = liveCount > 0 ? `${calls.length} (${liveCount} live)` : calls.length;
   const totalTurns = calls.reduce((s,c)=>s+(c.turns||0),0);
   document.getElementById('s-turns').textContent = totalTurns;
-  document.getElementById('s-avg').textContent = calls.length?(totalTurns/calls.length).toFixed(1):'0';
   const list = document.getElementById('call-list');
   if (!calls.length){
     list.innerHTML='<div style="padding:20px 14px;text-align:center;font-size:.72rem;color:var(--muted)">No calls yet</div>';
     return;
   }
   list.innerHTML = calls.map(c=>{
-    const active=c.room_name===selectedRoom?' active':'';
-    const dur=c.last_event&&c.started_at
-      ?Math.round((new Date(c.last_event)-new Date(c.started_at))/1000)+'s':'';
-    return `<div class="call-row${active}" onclick="selectRoom('${esc(c.room_name)}')">
+    const isSel = c.room_name===selectedRoom;
+    const liveClass = c.is_active ? ' live-row' : '';
+    const selClass = isSel ? ' sel' : '';
+    const dur = c.last_event && c.started_at
+      ? Math.round((new Date(c.last_event)-new Date(c.started_at))/1000)+'s' : '';
+    const liveBadge = c.is_active
+      ? `<span class="live-badge"><span class="live-badge-dot"></span>LIVE</span>` : '';
+    return `<div class="call-row${liveClass}${selClass}" onclick="selectRoom('${esc(c.room_name)}')">
       <div class="cr-room">${esc(fmtRoom(c.room_name))}</div>
       <div class="cr-meta">
+        ${liveBadge}
         <span>${fmtTime(c.started_at)}</span>
-        <span class="cr-turns">↕ ${c.turns} turns</span>
+        <span class="cr-turns">↕ ${c.turns}</span>
         ${dur?`<span>${dur}</span>`:''}
       </div>
     </div>`;
