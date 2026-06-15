@@ -10,40 +10,13 @@ from .sarvam_stt import SarvamSTT
 from .sarvam_tts import SarvamTTS
 from .vllm_llm import VLLMChat
 from .session import SessionManager
-from .db import init_db, log_call_event
+from .db import init_db, log_call_event, get_mock_accounts
 
 logger = logging.getLogger(__name__)
 
 GREETING = "नमस्ते! मैं आपकी कैसे मदद कर सकता हूँ?"
 
-MOCK_ACCOUNTS = """
-Demo account data — use this when callers give their mobile number:
-| Mobile       | Name             | Bill Amount | Due Date    | Plan                   | Account No | Last Payment       |
-|--------------|------------------|-------------|-------------|------------------------|------------|--------------------|
-| 9876543210   | Ramesh Kumar     | ₹450        | 20 Jun 2026 | 99 GB Data Pack        | ACC001     | ₹450 on 15 May     |
-| 9876543211   | Priya Sharma     | ₹780        | 25 Jun 2026 | Unlimited Calls        | ACC002     | ₹780 on 10 May     |
-| 9123456789   | Amit Patel       | ₹320        | 18 Jun 2026 | Basic 2GB/day          | ACC003     | ₹320 on 18 May     |
-| 8800001234   | Sunita Devi      | ₹180        | 30 Jun 2026 | Voice Only Pack        | ACC004     | ₹180 on 1 Jun      |
-| 7700123456   | Vijay Singh      | ₹1200       | 15 Jun 2026 | 5G Premium 200GB       | ACC005     | ₹1200 on 15 May    |
-| 9988776655   | Kavita Mehta     | ₹650        | 22 Jun 2026 | Fiber Broadband 100Mbps| ACC006     | ₹650 on 22 May     |
-| 8877665544   | Suresh Yadav     | ₹0          | —           | Prepaid 28-day ₹199    | ACC007     | Recharged ₹199     |
-| 7766554433   | Deepika Joshi    | ₹3500       | 10 Jun 2026 | Enterprise 1Gbps       | ACC008     | ₹3500 on 10 May    |
-| 9900112233   | Mohammed Rafiq   | ₹550        | 28 Jun 2026 | Unlimited 5G           | ACC009     | ₹550 on 28 May     |
-| 8811223344   | Lakshmi Nair     | ₹230        | 5 Jul 2026  | Student Pack 3GB/day   | ACC010     | ₹230 on 5 Jun      |
-
-Additional account details:
-- ACC001 (Ramesh Kumar): Internet speed: 40Mbps, Data used: 67GB of 99GB, Complaints: None
-- ACC002 (Priya Sharma): Has EMI of ₹199/month for device, next due 25 Jun 2026
-- ACC003 (Amit Patel): Account blocked due to non-payment, needs ₹320 to unblock
-- ACC005 (Vijay Singh): Bill overdue by 2 days, late fee ₹50 will apply after 20 Jun
-- ACC007 (Suresh Yadav): Prepaid — current balance ₹45, validity expires 8 Jul 2026
-- ACC008 (Deepika Joshi): Business account, GST registered, GSTIN: 24AABCS1429B1ZB
-
-If the caller's number is not listed, say their account was not found and ask them to verify the number.
-When giving bill information, always mention: amount, due date, and whether it is overdue.
-"""
-
-SYSTEM_PROMPT = (
+_SYSTEM_PROMPT_BASE = (
     "You are a helpful AI voice assistant for a telecom and billing customer support helpline in India. "
     "You assist callers with: billing queries (बिल/bill), internet and broadband issues, mobile recharges, "
     "EMI and payment problems, KYC verification, account issues, complaints, and service requests. "
@@ -52,17 +25,39 @@ SYSTEM_PROMPT = (
     "You support Hindi, English, Tamil, Telugu, Kannada, Malayalam, Bengali, Gujarati, Marathi, and Hinglish. "
     "IMPORTANT: Voice transcription may have minor errors in a telecom context. "
     "If you see 'दिल', 'दिन', 'मिल', or 'मिल्क' in a billing query, it likely means 'बिल' (bill). "
-    "Always interpret ambiguous words in the context of telecom and billing support.\n\n"
-    + MOCK_ACCOUNTS
+    "Always interpret ambiguous words in the context of telecom and billing support."
 )
 
 
-class VoiceAgent(Agent):
-    def __init__(self):
-        super().__init__(
-            instructions=SYSTEM_PROMPT,
-            allow_interruptions=True,
+def _build_system_prompt(accounts: list[dict]) -> str:
+    if not accounts:
+        return _SYSTEM_PROMPT_BASE
+    lines = [
+        "\n\nDemo account data — use this when callers give their mobile number:",
+        "| Mobile     | Name             | Bill   | Due Date    | Plan                   | Account | Last Payment    | Notes |",
+        "|------------|------------------|--------|-------------|------------------------|---------|-----------------|-------|",
+    ]
+    for a in accounts:
+        notes = a.get("notes", "") or ""
+        lines.append(
+            f"| {a['mobile']} | {a['name']:<16} | {a.get('bill_amount','₹0'):<6} | "
+            f"{a.get('due_date','—'):<11} | {a.get('plan',''):<22} | "
+            f"{a.get('account_no',''):<7} | {a.get('last_payment','—'):<15} | {notes[:40]} |"
         )
+    lines.append(
+        "\nIf the caller's number is not listed, say their account was not found and ask them to verify."
+        "\nWhen giving bill info, always mention: amount, due date, and whether it is overdue."
+    )
+    return _SYSTEM_PROMPT_BASE + "\n".join(lines)
+
+
+# Fallback prompt used if DB fetch fails
+SYSTEM_PROMPT = _SYSTEM_PROMPT_BASE
+
+
+class VoiceAgent(Agent):
+    def __init__(self, instructions: str):
+        super().__init__(instructions=instructions, allow_interruptions=True)
 
     async def on_enter(self) -> None:
         await self.session.say(GREETING, allow_interruptions=True)
@@ -92,6 +87,14 @@ async def entrypoint(ctx: JobContext) -> None:
     # If session language differs from hi-IN, create a new TTS for it
     if language != "hi-IN":
         tts_instance = SarvamTTS(api_key=sarvam_api_key, language=language)
+
+    # Load mock accounts from DB and build dynamic system prompt
+    try:
+        accounts = await get_mock_accounts()
+        prompt = _build_system_prompt(accounts)
+    except Exception:
+        logger.warning("Failed to load mock accounts — using base prompt")
+        prompt = _SYSTEM_PROMPT_BASE
 
     # Wait for pre-warm to finish before starting session (greeting is already cached)
     await tts_instance.await_prewarm()
@@ -130,10 +133,16 @@ async def entrypoint(ctx: JobContext) -> None:
             ms = (time.monotonic() - call_start) * 1000
             logger.info("latency_ms=%.0f room=%s", ms, room_name)
 
+    def on_agent_speech(event):
+        text = getattr(event, "text", "") or getattr(event, "transcript", "")
+        if text:
+            asyncio.create_task(log_call_event(room_name, "agent_speech", text))
+
     session.on("user_input_transcribed", on_transcript)
     session.on("agent_state_changed", on_agent_state)
+    session.on("agent_speech_committed", on_agent_speech)
 
-    agent = VoiceAgent()
+    agent = VoiceAgent(instructions=prompt)
     await session.start(agent, room=ctx.room, capture_run=True)
 
 
