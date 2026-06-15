@@ -406,56 +406,80 @@ header::before{
 }
 .live-badge-dot{width:5px;height:5px;border-radius:50%;background:#10b981;animation:pulse-g 1.2s ease-in-out infinite}
 
+/* ── Transcript panel header ── */
+.tx-hdr{
+  flex-shrink:0;padding:10px 16px;border-bottom:1px solid var(--border);
+  background:rgba(13,17,23,.9);display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+}
+.tx-hdr-room{
+  font-size:.72rem;font-weight:700;color:var(--blue-soft);
+  font-family:'Courier New',monospace;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.tx-hdr-pill{
+  font-size:.58rem;font-weight:700;padding:2px 8px;border-radius:9999px;white-space:nowrap;
+}
+.tx-hdr-live{background:rgba(16,185,129,.15);color:#34d399;border:1px solid rgba(16,185,129,.3)}
+.tx-hdr-ended{background:rgba(100,116,139,.1);color:#64748b;border:1px solid rgba(100,116,139,.2)}
+.tx-hdr-meta{display:flex;align-items:center;gap:10px;font-size:.65rem;color:var(--muted)}
+.tx-hdr-meta span{display:flex;align-items:center;gap:3px}
+.tx-empty-hdr{padding:10px 16px;font-size:.65rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);background:rgba(13,17,23,.8)}
+
 /* Transcript chat */
-.chat-wrap{padding:12px 14px;display:flex;flex-direction:column;gap:8px}
-.chat-sys{
-  display:flex;justify-content:center;margin:4px 0;
-}
-.chat-sys-pill{
-  font-size:.6rem;font-weight:600;padding:3px 10px;border-radius:9999px;letter-spacing:.04em;
-}
+.chat-wrap{padding:16px 16px 24px;display:flex;flex-direction:column;gap:4px}
+.exchange-gap{height:10px}
+.chat-sys{display:flex;justify-content:center;margin:6px 0}
+.chat-sys-pill{font-size:.6rem;font-weight:600;padding:3px 12px;border-radius:9999px;letter-spacing:.04em}
 .pill-start{background:rgba(16,185,129,.12);color:#34d399;border:1px solid rgba(16,185,129,.2)}
 .pill-end{background:rgba(239,68,68,.12);color:#f87171;border:1px solid rgba(239,68,68,.2)}
-.bubble-row{display:flex;gap:8px;max-width:88%}
+
+.bubble-row{display:flex;gap:10px;max-width:82%}
 .bubble-row.user{align-self:flex-start}
 .bubble-row.agent{align-self:flex-end;flex-direction:row-reverse}
 .bubble-avatar{
-  width:26px;height:26px;border-radius:50%;flex-shrink:0;margin-top:2px;
-  display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;
+  width:28px;height:28px;border-radius:50%;flex-shrink:0;margin-top:18px;
+  display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700;
 }
-.avatar-user{background:linear-gradient(135deg,#1e40af,#2563eb);color:#93c5fd}
-.avatar-agent{background:linear-gradient(135deg,#581c87,#7e22ce);color:#d8b4fe}
-.bubble{
-  padding:8px 12px;border-radius:12px;font-size:.82rem;line-height:1.5;word-break:break-word;
-  max-width:100%;position:relative;
-}
-.bubble-user{
-  background:rgba(30,58,138,.35);border:1px solid rgba(59,130,246,.2);
-  border-bottom-left-radius:4px;color:#bfdbfe;
-}
-.bubble-agent{
-  background:rgba(88,28,135,.3);border:1px solid rgba(168,85,247,.2);
-  border-bottom-right-radius:4px;color:#e9d5ff;
-}
-.bubble-meta{
-  display:flex;align-items:center;gap:5px;margin-bottom:3px;
-}
+.avatar-user{background:linear-gradient(135deg,#1e3a8a,#2563eb);color:#93c5fd}
+.avatar-agent{background:linear-gradient(135deg,#4a044e,#7e22ce);color:#e9d5ff}
+.bubble-col{display:flex;flex-direction:column;gap:2px;min-width:0}
+.bubble-meta{display:flex;align-items:center;gap:6px;padding:0 4px;margin-bottom:2px}
 .bubble-row.agent .bubble-meta{flex-direction:row-reverse}
+.bubble-who{font-size:.62rem;font-weight:600;color:#64748b}
 .badge-stt{
-  font-size:.52rem;font-weight:700;padding:1px 5px;border-radius:3px;letter-spacing:.04em;
-  background:rgba(59,130,246,.2);color:#60a5fa;border:1px solid rgba(59,130,246,.3);
+  font-size:.54rem;font-weight:700;padding:1px 6px;border-radius:4px;letter-spacing:.05em;
+  background:rgba(37,99,235,.25);color:#93c5fd;border:1px solid rgba(59,130,246,.3);
 }
 .badge-tts{
-  font-size:.52rem;font-weight:700;padding:1px 5px;border-radius:3px;letter-spacing:.04em;
-  background:rgba(168,85,247,.2);color:#c084fc;border:1px solid rgba(168,85,247,.3);
+  font-size:.54rem;font-weight:700;padding:1px 6px;border-radius:4px;letter-spacing:.05em;
+  background:rgba(126,34,206,.25);color:#d8b4fe;border:1px solid rgba(168,85,247,.3);
 }
-.bubble-time{font-size:.58rem;color:var(--muted)}
+.bubble-time{font-size:.58rem;color:#374151;margin-left:2px}
+.bubble{
+  padding:10px 14px;border-radius:14px;font-size:.88rem;line-height:1.6;
+  word-break:break-word;position:relative;
+}
+.bubble-user{
+  background:linear-gradient(135deg,rgba(30,58,138,.4),rgba(37,99,235,.2));
+  border:1px solid rgba(59,130,246,.25);border-top-left-radius:4px;
+  color:#dbeafe;
+}
+.bubble-agent{
+  background:linear-gradient(135deg,rgba(88,28,135,.4),rgba(126,34,206,.2));
+  border:1px solid rgba(168,85,247,.25);border-top-right-radius:4px;
+  color:#f3e8ff;
+}
+.bubble-agent.trunc{opacity:.7;font-style:italic}
+.fragment-sep{
+  display:block;font-size:.6rem;color:#374151;margin:4px 0 2px;
+  border-top:1px dashed rgba(255,255,255,.06);padding-top:4px;
+}
+
 .empty-chat{
   display:flex;flex-direction:column;align-items:center;justify-content:center;
-  height:100%;gap:10px;color:var(--muted);
+  height:100%;gap:12px;color:var(--muted);
 }
-.empty-chat-icon{font-size:2rem;opacity:.3}
-.empty-chat-text{font-size:.78rem;opacity:.6}
+.empty-chat-icon{font-size:2.5rem;opacity:.25}
+.empty-chat-text{font-size:.8rem;opacity:.5;text-align:center;line-height:1.5}
 
 /* ── Accounts ── */
 .accounts-layout{width:100%;height:100%;display:flex;flex-direction:column;overflow:hidden}
@@ -592,14 +616,11 @@ tbody td{padding:9px 14px;vertical-align:middle;color:#cbd5e1}
     </div>
     <!-- Right: transcript -->
     <div class="panel">
-      <div class="panel-hdr">
-        Conversation
-        <span class="panel-hdr-val" id="room-label"></span>
-      </div>
+      <div id="transcript-hdr" class="tx-empty-hdr">Conversation</div>
       <div class="panel-body" id="transcript-list">
         <div class="empty-chat">
           <div class="empty-chat-icon">💬</div>
-          <div class="empty-chat-text">Select a call to view its transcript</div>
+          <div class="empty-chat-text">Select a call on the left<br>to view its live transcript</div>
         </div>
       </div>
     </div>
@@ -724,23 +745,34 @@ async function loadCalls() {
   const r = await fetch('/api/calls').catch(()=>null);
   if (!r) return;
   const calls = await r.json();
+
+  // Cache call metadata for the transcript header
+  calls.forEach(c => { _callMeta[c.room_name] = c; });
+
   const liveCount = calls.filter(c=>c.is_active).length;
   document.getElementById('s-calls').textContent = calls.length;
   document.getElementById('s-live').textContent = liveCount;
   document.getElementById('badge-calls').textContent = liveCount > 0 ? `${calls.length} (${liveCount} live)` : calls.length;
   const totalTurns = calls.reduce((s,c)=>s+(c.turns||0),0);
   document.getElementById('s-turns').textContent = totalTurns;
+
   const list = document.getElementById('call-list');
   if (!calls.length){
     list.innerHTML='<div style="padding:20px 14px;text-align:center;font-size:.72rem;color:var(--muted)">No calls yet</div>';
     return;
   }
+
+  // Auto-select the first live call if nothing selected yet
+  if (!selectedRoom) {
+    const first = calls.find(c=>c.is_active) || calls[0];
+    if (first) selectRoom(first.room_name);
+  }
+
   list.innerHTML = calls.map(c=>{
     const isSel = c.room_name===selectedRoom;
     const liveClass = c.is_active ? ' live-row' : '';
     const selClass = isSel ? ' sel' : '';
-    const dur = c.last_event && c.started_at
-      ? Math.round((new Date(c.last_event)-new Date(c.started_at))/1000)+'s' : '';
+    const dur = c.last_event && c.started_at ? fmtDur(c.started_at, c.last_event) : '';
     const liveBadge = c.is_active
       ? `<span class="live-badge"><span class="live-badge-dot"></span>LIVE</span>` : '';
     return `<div class="call-row${liveClass}${selClass}" onclick="selectRoom('${esc(c.room_name)}')">
@@ -755,57 +787,145 @@ async function loadCalls() {
   }).join('');
 }
 
+// ── Relative time ─────────────────────────────────────────────────────────
+function fmtRel(iso) {
+  const s = Math.round((Date.now() - new Date(iso)) / 1000);
+  if (s < 5)  return 'just now';
+  if (s < 60) return s + 's ago';
+  if (s < 3600) return Math.floor(s/60) + 'm ago';
+  return fmtTime(iso);
+}
+function fmtDur(startIso, endIso) {
+  const s = Math.round((new Date(endIso) - new Date(startIso)) / 1000);
+  if (s < 60) return s + 's';
+  return Math.floor(s/60) + 'm ' + (s%60) + 's';
+}
+
+// ── Group consecutive STT fragments (same speaker within 3s) ─────────────
+function groupEvents(ordered) {
+  const out = [];
+  for (const e of ordered) {
+    const prev = out[out.length - 1];
+    if (
+      e.event_type === 'user_speech' &&
+      prev && prev.event_type === 'user_speech' &&
+      Math.abs(new Date(e.created_at) - new Date(prev.created_at)) <= 3000
+    ) {
+      prev._fragments = prev._fragments || [prev.content];
+      prev._fragments.push(e.content);
+      prev.content = prev._fragments.join(' · ');
+      prev.created_at = e.created_at;
+    } else {
+      out.push({...e, _fragments: null});
+    }
+  }
+  return out;
+}
+
+// ── Update transcript header ──────────────────────────────────────────────
+let _callMeta = {};
+function updateTranscriptHdr(room) {
+  const hdr = document.getElementById('transcript-hdr');
+  const meta = _callMeta[room];
+  if (!room) {
+    hdr.className = 'tx-empty-hdr';
+    hdr.innerHTML = 'Conversation';
+    return;
+  }
+  const isLive = meta?.is_active;
+  const turns  = meta?.turns ?? '—';
+  const dur    = meta?.started_at && meta?.last_event ? fmtDur(meta.started_at, meta.last_event) : '';
+  const pillCls = isLive ? 'tx-hdr-pill tx-hdr-live' : 'tx-hdr-pill tx-hdr-ended';
+  const pillTxt = isLive
+    ? '<span class="live-badge-dot" style="display:inline-block;width:5px;height:5px;border-radius:50%;background:#10b981;margin-right:3px;animation:pulse-g 1.2s ease-in-out infinite"></span>LIVE'
+    : 'ENDED';
+  hdr.className = 'tx-hdr';
+  hdr.innerHTML = `
+    <span class="tx-hdr-room">${esc(room)}</span>
+    <span class="${pillCls}">${pillTxt}</span>
+    <span class="tx-hdr-meta">
+      <span>↕ ${turns} turns</span>
+      ${dur ? `<span>⏱ ${dur}</span>` : ''}
+    </span>`;
+}
+
 // ── Load transcripts ────────────────────────────────────────────────────────
 async function loadTranscripts() {
-  const url = selectedRoom
-    ? `/api/transcripts?room=${encodeURIComponent(selectedRoom)}&limit=200`
-    : '/api/transcripts?limit=60';
+  if (!selectedRoom) return;
+  const url = `/api/transcripts?room=${encodeURIComponent(selectedRoom)}&limit=200`;
   const r = await fetch(url).catch(()=>null);
   if (!r) return;
   const rows = await r.json();
   const list = document.getElementById('transcript-list');
+  updateTranscriptHdr(selectedRoom);
+
   if (!rows.length){
     list.innerHTML='<div class="empty-chat"><div class="empty-chat-icon">💬</div><div class="empty-chat-text">No events yet</div></div>';
     return;
   }
-  // Reverse so oldest first (API returns newest first)
-  const ordered = [...rows].reverse();
-  list.innerHTML = '<div class="chat-wrap">' + ordered.map(e=>{
-    if (e.event_type==='call_started')
-      return `<div class="chat-sys"><span class="chat-sys-pill pill-start">📞 Call Started · ${fmtTime(e.created_at)}</span></div>`;
-    if (e.event_type==='call_ended')
-      return `<div class="chat-sys"><span class="chat-sys-pill pill-end">📵 Call Ended · ${fmtTime(e.created_at)}</span></div>`;
-    if (e.event_type==='user_speech')
-      return `<div class="bubble-row user">
+
+  // Smart scroll: only auto-scroll if already near the bottom
+  const nearBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 120;
+
+  const ordered = groupEvents([...rows].reverse());
+  let prevType = null;
+  const html = ordered.map((e,i)=>{
+    const rel = fmtRel(e.created_at);
+    // Gap between exchanges (agent→user transition)
+    const gap = (prevType === 'agent_speech' && e.event_type === 'user_speech') ? '<div class="exchange-gap"></div>' : '';
+    prevType = e.event_type;
+
+    if (e.event_type === 'call_started')
+      return `${gap}<div class="chat-sys"><span class="chat-sys-pill pill-start">📞 Call Started &nbsp;·&nbsp; ${fmtTime(e.created_at)}</span></div>`;
+    if (e.event_type === 'call_ended')
+      return `${gap}<div class="chat-sys"><span class="chat-sys-pill pill-end">📵 Call Ended &nbsp;·&nbsp; ${fmtTime(e.created_at)}</span></div>`;
+
+    if (e.event_type === 'user_speech') {
+      const frags = e._fragments;
+      const bodyHtml = frags
+        ? frags.map((f,fi) => fi===0
+            ? esc(f)
+            : `<span class="fragment-sep">fragment ${fi+1}</span>${esc(f)}`
+          ).join('')
+        : esc(e.content||'');
+      return `${gap}<div class="bubble-row user">
         <div class="bubble-avatar avatar-user">👤</div>
-        <div>
+        <div class="bubble-col">
           <div class="bubble-meta">
+            <span class="bubble-who">Caller</span>
             <span class="badge-stt">🎙 STT</span>
-            <span class="bubble-time">${fmtTime(e.created_at)}</span>
+            <span class="bubble-time">${rel}</span>
           </div>
-          <div class="bubble bubble-user">${esc(e.content||'')}</div>
+          <div class="bubble bubble-user">${bodyHtml}</div>
         </div>
       </div>`;
-    if (e.event_type==='agent_speech')
-      return `<div class="bubble-row agent">
+    }
+
+    if (e.event_type === 'agent_speech') {
+      const text = e.content || '';
+      const isTrunc = text.length < 30 && !/[।.?!]$/.test(text.trim());
+      return `${gap}<div class="bubble-row agent">
         <div class="bubble-avatar avatar-agent">🤖</div>
-        <div>
+        <div class="bubble-col">
           <div class="bubble-meta">
+            <span class="bubble-who">Agent</span>
             <span class="badge-tts">🔊 TTS</span>
-            <span class="bubble-time">${fmtTime(e.created_at)}</span>
+            <span class="bubble-time">${rel}</span>
           </div>
-          <div class="bubble bubble-agent">${esc(e.content||'')}</div>
+          <div class="bubble bubble-agent${isTrunc?' trunc':''}">${esc(text)}</div>
         </div>
       </div>`;
+    }
     return '';
-  }).join('') + '</div>';
-  // Auto-scroll to bottom
-  list.scrollTop = list.scrollHeight;
+  }).join('');
+
+  list.innerHTML = '<div class="chat-wrap">' + html + '</div>';
+  if (nearBottom) list.scrollTop = list.scrollHeight;
 }
 
 function selectRoom(room) {
   selectedRoom = room;
-  document.getElementById('room-label').textContent = fmtRoom(room);
+  updateTranscriptHdr(room);
   loadTranscripts();
 }
 
