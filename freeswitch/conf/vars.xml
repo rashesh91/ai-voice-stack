@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<include>
+  <X-PRE-PROCESS cmd="set" data="domain=ai-voice.local"/>
+  <X-PRE-PROCESS cmd="set" data="domain_name=$${domain}"/>
+  <X-PRE-PROCESS cmd="set" data="default_password=aivoice2024"/>
+
+  <!-- SIP settings -->
+  <X-PRE-PROCESS cmd="set" data="internal_sip_port=5060"/>
+  <X-PRE-PROCESS cmd="set" data="internal_tls_port=5061"/>
+
+  <!-- RTP port range -->
+  <X-PRE-PROCESS cmd="set" data="rtp_start_port=16384"/>
+  <X-PRE-PROCESS cmd="set" data="rtp_end_port=32768"/>
+
+  <!-- ESL password — substituted by initContainer from k8s Secret at pod start -->
+  <X-PRE-PROCESS cmd="set" data="esl_password=REPLACE_AT_STARTUP"/>
+
+  <!-- LiveKit SIP bridge target -->
+  <X-PRE-PROCESS cmd="set" data="livekit_sip_host=127.0.0.1"/>
+  <X-PRE-PROCESS cmd="set" data="livekit_sip_port=5080"/>
+
+  <!-- Codec preferences — PCMU/PCMA for telephony compatibility -->
+  <X-PRE-PROCESS cmd="set" data="global_codec_prefs=PCMU,PCMA,G722,opus"/>
+</include>

@@ -1,0 +1,92 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: livekit
+  namespace: ai-voice
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: livekit
+  template:
+    metadata:
+      labels:
+        app: livekit
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      initContainers:
+        # Injects API key/secret from Secret into livekit.yaml at startup
+        - name: config-init
+          image: alpine:3.19
+          command:
+            - sh
+            - -c
+            - |
+              cp /config-src/livekit-template.yaml /config/livekit.yaml
+              # Append keys section with real credentials from Secret
+              printf "\nkeys:\n  %s: %s\n" "$LIVEKIT_API_KEY" "$LIVEKIT_API_SECRET" \
+                >> /config/livekit.yaml
+          env:
+            - name: LIVEKIT_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: ai-voice-secrets
+                  key: livekit-api-key
+            - name: LIVEKIT_API_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: ai-voice-secrets
+                  key: livekit-api-secret
+          volumeMounts:
+            - name: config-src
+              mountPath: /config-src
+              readOnly: true
+            - name: config
+              mountPath: /config
+      containers:
+        - name: livekit
+          image: livekit/livekit-server:v1.8.3      # pinned version
+          args: ["--config", "/etc/livekit/livekit.yaml"]
+          ports:
+            - containerPort: 7880
+              protocol: TCP
+            - containerPort: 7881
+              protocol: TCP
+            - containerPort: 7882
+              protocol: UDP
+          volumeMounts:
+            - name: config
+              mountPath: /etc/livekit
+              readOnly: true
+            - name: data
+              mountPath: /data
+          resources:
+            requests:
+              cpu: "2"
+              memory: "2Gi"
+            limits:
+              cpu: "8"
+              memory: "8Gi"
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 7880
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 7880
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            failureThreshold: 3
+      volumes:
+        - name: config-src
+          configMap:
+            name: livekit-server-config
+        - name: config
+          emptyDir: {}
+        - name: data
+          persistentVolumeClaim:
+            claimName: livekit-pvc

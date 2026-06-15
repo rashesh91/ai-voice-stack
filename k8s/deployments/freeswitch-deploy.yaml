@@ -1,0 +1,86 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: freeswitch
+  namespace: ai-voice
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: freeswitch
+  template:
+    metadata:
+      labels:
+        app: freeswitch
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      initContainers:
+        # Copies config from read-only hostPath → writable emptyDir, then
+        # substitutes the ESL password from the k8s Secret via envsubst.
+        - name: config-init
+          image: alpine:3.19
+          command:
+            - sh
+            - -c
+            - |
+              apk add --no-cache gettext
+              cp -r /config-src/. /etc/freeswitch/
+              # Replace REPLACE_AT_STARTUP placeholder in vars.xml with real password
+              sed -i "s|REPLACE_AT_STARTUP|${ESL_PASSWORD}|g" /etc/freeswitch/vars.xml
+          env:
+            - name: ESL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: ai-voice-secrets
+                  key: esl-password
+          volumeMounts:
+            - name: fs-config-src
+              mountPath: /config-src
+              readOnly: true
+            - name: fs-config
+              mountPath: /etc/freeswitch
+      containers:
+        - name: freeswitch
+          image: signalwire/freeswitch:1.10
+          ports:
+            - containerPort: 5060
+              protocol: UDP
+            - containerPort: 5060
+              protocol: TCP
+            - containerPort: 8021
+              protocol: TCP
+          volumeMounts:
+            - name: fs-config
+              mountPath: /etc/freeswitch
+              readOnly: true
+            - name: fs-data
+              mountPath: /var/lib/freeswitch
+          resources:
+            requests:
+              cpu: "1"
+              memory: "1Gi"
+            limits:
+              cpu: "4"
+              memory: "4Gi"
+          readinessProbe:
+            exec:
+              command: ["fs_cli", "-x", "status"]
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          livenessProbe:
+            exec:
+              command: ["fs_cli", "-x", "status"]
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            failureThreshold: 3
+      volumes:
+        - name: fs-config-src
+          hostPath:
+            path: /opt/ai-voice-stack/freeswitch/conf
+            type: Directory
+        - name: fs-config
+          emptyDir: {}
+        - name: fs-data
+          persistentVolumeClaim:
+            claimName: freeswitch-pvc

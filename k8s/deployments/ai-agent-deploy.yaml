@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-agent
+  namespace: ai-voice
+spec:
+  replicas: 2                  # scale horizontally for concurrent calls
+  selector:
+    matchLabels:
+      app: ai-agent
+  template:
+    metadata:
+      labels:
+        app: ai-agent
+    spec:
+      containers:
+        - name: ai-agent
+          image: localhost:5000/ai-agent:latest
+          command: ["python", "-m", "src.main"]
+          ports:
+            - containerPort: 8081
+          envFrom:
+            - configMapRef:
+                name: ai-agent-config
+          env:
+            - name: SARVAM_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: ai-voice-secrets
+                  key: sarvam-api-key
+            - name: LIVEKIT_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: ai-voice-secrets
+                  key: livekit-api-key
+            - name: LIVEKIT_API_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: ai-voice-secrets
+                  key: livekit-api-secret
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: ai-voice-secrets
+                  key: postgres-password
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "512Mi"
+            limits:
+              cpu: "2"
+              memory: "2Gi"
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8081
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            failureThreshold: 6

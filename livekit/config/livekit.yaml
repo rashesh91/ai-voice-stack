@@ -1,0 +1,28 @@
+port: 7880
+rtc:
+  tcp_port: 7881
+  udp_port: 7882
+  use_external_ip: false
+  # Set to your server's public IP if behind NAT
+  # node_ip: "YOUR_PUBLIC_IP"
+
+redis:
+  address: redis:6379
+
+keys:
+  # Replace with generated key pair: livekit-cli generate-keys
+  # devkey: devsecret
+  LIVEKIT_API_KEY: LIVEKIT_API_SECRET
+
+room:
+  auto_create: true
+  empty_timeout: 300       # close room after 5 min of silence
+  max_participants: 2      # caller + AI agent
+
+sip:
+  enabled: true
+  port: 5080
+
+logging:
+  level: info
+  json: true

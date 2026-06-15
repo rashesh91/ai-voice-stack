@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: freeswitch-config
+  namespace: ai-voice
+data:
+  # Key FreeSWITCH settings passed as env vars to the container
+  # Full XML configs are in /opt/ai-voice-stack/freeswitch/conf/ (mounted as PVC)
+  FREESWITCH_DOMAIN: "ai-voice.local"
+  RTP_START_PORT: "16384"
+  RTP_END_PORT: "32768"
+  SIP_PORT: "5060"
+  ESL_PORT: "8021"
+  AI_AGENT_HOST: "ai-agent"
+  AI_AGENT_PORT: "8080"

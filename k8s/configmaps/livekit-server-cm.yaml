@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: livekit-server-config
+  namespace: ai-voice
+data:
+  # API keys are NOT stored here — they come from ai-voice-secrets and are
+  # injected by the livekit initContainer into livekit.yaml at startup.
+  livekit-template.yaml: |
+    port: 7880
+    rtc:
+      tcp_port: 7881
+      udp_port: 7882
+      use_external_ip: false
+    redis:
+      address: redis:6379
+    room:
+      auto_create: true
+      empty_timeout: 300
+      max_participants: 2
+    sip:
+      enabled: true
+      port: 5080
+    logging:
+      level: info
+      json: true

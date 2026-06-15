@@ -1,0 +1,13 @@
+# LiveKit SIP Dispatch Rules
+# Applied via: livekit-cli create-sip-dispatch-rule --from-file sip-dispatch.yaml
+
+rules:
+  - name: "inbound-ai-agent"
+    type: "individual_dispatch"
+    # All inbound SIP calls → dedicated room per call, agent auto-joins
+    inbound:
+      pin: ""                     # no PIN required
+      room_prefix: "call-"        # room name = call-<call-uuid>
+    dispatch:
+      room_name: ""               # dynamic per call
+      new_participant_identity: "caller"

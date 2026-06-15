@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<include>
+  <context name="default">
+
+    <!-- Route all inbound calls to LiveKit SIP bridge -->
+    <extension name="ai-agent-inbound">
+      <condition field="destination_number" expression="^(.*)$">
+        <!-- Set caller language detection header -->
+        <action application="set" data="call_language=hi-IN"/>
+        <action application="set" data="sip_h_X-Call-Language=hi-IN"/>
+        <!-- Bridge to LiveKit SIP on port 5080 -->
+        <action application="bridge" data="sofia/external/sip:$1@$${livekit_sip_host}:$${livekit_sip_port}"/>
+      </condition>
+    </extension>
+
+    <!-- Hangup on failure -->
+    <extension name="hangup">
+      <condition field="destination_number" expression="^fail$">
+        <action application="hangup" data="NORMAL_CLEARING"/>
+      </condition>
+    </extension>
+
+  </context>
+</include>

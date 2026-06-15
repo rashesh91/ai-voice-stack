@@ -1,0 +1,37 @@
+# SIP is exposed externally; ESL is ClusterIP-only (never exposed to the public internet)
+apiVersion: v1
+kind: Service
+metadata:
+  name: freeswitch-sip
+  namespace: ai-voice
+spec:
+  selector:
+    app: freeswitch
+  ports:
+    - name: sip-udp
+      port: 5060
+      targetPort: 5060
+      protocol: UDP
+      nodePort: 30060
+    - name: sip-tcp
+      port: 5060
+      targetPort: 5060
+      protocol: TCP
+      nodePort: 30061
+  type: NodePort
+---
+# ESL management port — internal only, never NodePort
+apiVersion: v1
+kind: Service
+metadata:
+  name: freeswitch-esl
+  namespace: ai-voice
+spec:
+  selector:
+    app: freeswitch
+  ports:
+    - name: esl
+      port: 8021
+      targetPort: 8021
+      protocol: TCP
+  type: ClusterIP

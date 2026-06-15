@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vllm
+  namespace: ai-voice
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vllm
+  template:
+    metadata:
+      labels:
+        app: vllm
+    spec:
+      containers:
+        - name: vllm
+          image: vllm/vllm-openai:v0.6.6
+          args:
+            - "--model"
+            - "bartowski/Llama-3.2-3B-Instruct-AWQ"   # 3B vs 8B: ~200 tok/s vs ~90 tok/s on L4
+            - "--quantization"
+            - "awq"
+            - "--max-model-len"
+            - "4096"
+            - "--gpu-memory-utilization"
+            - "0.7"                                    # 3B needs less VRAM; leave headroom
+            - "--max-num-seqs"
+            - "16"
+            - "--enable-chunked-prefill"               # overlaps prefill+decode → lower TTFT
+            - "--kv-cache-dtype"
+            - "fp8"                                    # halves KV cache memory
+            - "--max-num-batched-tokens"
+            - "2048"
+            - "--host"
+            - "0.0.0.0"
+            - "--port"
+            - "8000"
+          ports:
+            - containerPort: 8000
+          env:
+            - name: HF_HOME
+              value: /models/hub
+            - name: TRANSFORMERS_CACHE
+              value: /models/hub
+          volumeMounts:
+            - name: models
+              mountPath: /models
+          resources:
+            requests:
+              cpu: "4"
+              memory: "8Gi"
+              nvidia.com/gpu: "1"
+            limits:
+              cpu: "8"
+              memory: "12Gi"
+              nvidia.com/gpu: "1"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            failureThreshold: 30
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 120
+            periodSeconds: 30
+      volumes:
+        - name: models
+          persistentVolumeClaim:
+            claimName: vllm-models-pvc
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule

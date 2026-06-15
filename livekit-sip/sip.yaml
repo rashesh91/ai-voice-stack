@@ -1,0 +1,13 @@
+log_level: info
+
+api_key: lk-jzdld9kposbl6ovy
+api_secret: pO8Elc0GNmhrCvC6ihWFAm2oXqg08CchnVuZzJ1fUFKCfKcw
+ws_url: ws://217.18.55.105:30880
+
+redis:
+  address: 10.43.206.140:6379
+  db: 1
+
+sip_port: 5080
+rtp_port: 10000
+rtp_port_range_end: 20000

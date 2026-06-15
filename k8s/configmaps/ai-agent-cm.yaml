@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ai-agent-config
+  namespace: ai-voice
+data:
+  LIVEKIT_URL: "ws://livekit:7880"
+  FREESWITCH_HOST: "localhost"       # hostNetwork — same node
+  FREESWITCH_ESL_PORT: "8021"
+  VLLM_BASE_URL: "http://217.18.55.105:8000/v1"
+  VLLM_MODEL: "voice-agent"
+  REDIS_URL: "redis://redis:6379/0"
+  # DATABASE_URL is assembled in db.py from POSTGRES_PASSWORD (injected from Secret)
+  POSTGRES_HOST: "postgres"
+  POSTGRES_PORT: "5432"
+  POSTGRES_DB: "aivoice"
+  POSTGRES_USER: "aivoice"
+  SARVAM_STT_URL: "wss://api.sarvam.ai/speech-to-text-translate"
+  SARVAM_TTS_URL: "https://api.sarvam.ai/text-to-speech"
+  SARVAM_LANGUAGE: "hi-IN"          # default; overridden per call
+  LOG_LEVEL: "INFO"
+  MAX_LATENCY_MS: "500"

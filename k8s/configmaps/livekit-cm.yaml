@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: livekit-config
+  namespace: ai-voice
+data:
+  LIVEKIT_URL: "ws://livekit:7880"
+  LIVEKIT_WS_PORT: "7880"
+  LIVEKIT_RTC_TCP_PORT: "7881"
+  LIVEKIT_TURN_UDP_PORT: "3478"
+  # SIP bridge config
+  SIP_PORT: "5080"          # LiveKit SIP listens on 5080; FreeSWITCH on 5060
+  FREESWITCH_SIP_HOST: "localhost"  # hostNetwork — same node
+  FREESWITCH_SIP_PORT: "5060"
