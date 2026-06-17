@@ -5,6 +5,8 @@ metadata:
   namespace: ai-voice
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: vllm
@@ -13,30 +15,38 @@ spec:
       labels:
         app: vllm
     spec:
+      runtimeClassName: nvidia
+      enableServiceLinks: false
+      tolerations:
+        - key: "node.kubernetes.io/disk-pressure"
+          operator: "Exists"
+          effect: "NoSchedule"
       containers:
         - name: vllm
           image: vllm/vllm-openai:v0.6.6
           args:
             - "--model"
-            - "Qwen/Qwen2.5-1.5B-Instruct"
+            - "Telugu-LLM-Labs/Indic-gemma-7b-finetuned-sft-Navarasa-2.0"
+            - "--served-model-name"
+            - "indic-gemma"
             - "--dtype"
             - "bfloat16"
             - "--enforce-eager"
             - "--gpu-memory-utilization"
-            - "0.60"
+            - "0.85"
             - "--max-model-len"
             - "2048"
-            - "--enable-lora"
-            - "--lora-modules"
-            - "voice-agent=/lora-adapter"
-            - "--max-lora-rank"
-            - "32"
             - "--max-num-seqs"
-            - "8"
+            - "4"
             - "--host"
             - "0.0.0.0"
             - "--port"
             - "8000"
+            - "--enable-lora"
+            - "--lora-modules"
+            - "indic-gemma-ugvcl=/lora-adapter-gemma"
+            - "--max-lora-rank"
+            - "16"
           ports:
             - containerPort: 8000
           env:
@@ -44,43 +54,42 @@ spec:
               value: /models/hub
             - name: TRANSFORMERS_CACHE
               value: /models/hub
+            - name: NVIDIA_VISIBLE_DEVICES
+              value: "all"
+            - name: NVIDIA_DRIVER_CAPABILITIES
+              value: "compute,utility"
           volumeMounts:
             - name: models
               mountPath: /models
             - name: lora-adapter
-              mountPath: /lora-adapter
+              mountPath: /lora-adapter-gemma
           resources:
             requests:
               cpu: "4"
-              memory: "6Gi"
-              nvidia.com/gpu: "1"
+              memory: "16Gi"
             limits:
               cpu: "8"
-              memory: "10Gi"
-              nvidia.com/gpu: "1"
+              memory: "20Gi"
           readinessProbe:
             httpGet:
               path: /health
               port: 8000
-            initialDelaySeconds: 90
-            periodSeconds: 10
-            failureThreshold: 30
+            initialDelaySeconds: 180
+            periodSeconds: 15
+            failureThreshold: 40
           livenessProbe:
             httpGet:
               path: /health
               port: 8000
-            initialDelaySeconds: 150
+            initialDelaySeconds: 240
             periodSeconds: 30
             failureThreshold: 3
       volumes:
         - name: models
-          persistentVolumeClaim:
-            claimName: vllm-models-pvc
+          hostPath:
+            path: /opt/ai-voice-stack/data/vllm-models
+            type: Directory
         - name: lora-adapter
           hostPath:
-            path: /opt/ai-voice-stack/data/lora-adapter
-            type: DirectoryOrCreate
-      tolerations:
-        - key: nvidia.com/gpu
-          operator: Exists
-          effect: NoSchedule
+            path: /opt/ai-voice-stack/data/lora-adapter-gemma
+            type: Directory

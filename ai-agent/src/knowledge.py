@@ -8,6 +8,7 @@ Structure:
   _KB[intent] = list of (sub_keywords, {lang: answer})
 The first entry whose sub_keywords all appear in the lowercased user text wins.
 """
+import re
 
 _KB: dict[str, list[tuple[list[str], dict[str, str]]]] = {
 
@@ -353,12 +354,17 @@ _KB: dict[str, list[tuple[list[str], dict[str, str]]]] = {
 }
 
 
+def _word_match(kw: str, text_lower: str) -> bool:
+    """Match keyword as whole word(s) to avoid substring false positives like 'app' in 'happy'."""
+    return bool(re.search(r'(?<!\w)' + re.escape(kw) + r'(?!\w)', text_lower))
+
+
 def lookup(intent: str, text: str, lang: str) -> str | None:
     """
     Return a specific spoken answer if the user text matches a sub-topic keyword group,
     or None if only the generic intent reply applies.
 
-    Matching: ANY keyword in the group appearing in lowercased text is a hit.
+    Matching: ANY keyword in the group appearing as a whole word is a hit.
     Groups are ordered most-specific first so the first match wins.
     """
     entries = _KB.get(intent)
@@ -367,7 +373,7 @@ def lookup(intent: str, text: str, lang: str) -> str | None:
 
     lower = text.lower()
     for keywords, replies in entries:
-        if any(kw in lower for kw in keywords):
+        if any(_word_match(kw, lower) for kw in keywords):
             answer = replies.get(lang) or replies.get("en-IN")
             return answer
 

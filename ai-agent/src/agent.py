@@ -8,16 +8,27 @@ from livekit.plugins import silero, noise_cancellation
 
 from .sarvam_stt import SarvamSTT
 from .sarvam_tts import SarvamTTS
+from .sarvam_translate import SarvamTranslate
 from .vllm_llm import VLLMChat
 from .session import SessionManager
 from .db import init_db, log_call_event, get_mock_accounts
+from .ticket_db import init_ticket_db
+
+# Local model feature flags — set USE_LOCAL_STT=true / USE_LOCAL_TTS=true in env
+_USE_LOCAL_STT = os.environ.get("USE_LOCAL_STT", "false").lower() == "true"
+_USE_LOCAL_TTS = os.environ.get("USE_LOCAL_TTS", "false").lower() == "true"
+
+if _USE_LOCAL_STT:
+    from .local_stt import LocalSarvamSTT
+if _USE_LOCAL_TTS:
+    from .local_tts import LocalIndicTTS
 
 logger = logging.getLogger(__name__)
 
 # Greeting asks for consumer / mobile number to start FSM identification
 GREETING = (
-    "નમસ્તે! UGVCL ગ્રાહક સેવામાં સ્વાગત. "
-    "Consumer number અથવા registered mobile number આપો."
+    "નમસ્તે! UGVCL ગ્રાહક સેવામાં આપનું સ્વાગત છે. "
+    "Krupaya aapno consumer number athva registered mobile number aapshho?"
 )
 
 _SYSTEM_PROMPT_BASE = (
@@ -82,12 +93,26 @@ async def entrypoint(ctx: JobContext) -> None:
     logger.info("agent joining room=%s", room_name)
 
     await init_db()
+    init_ticket_db()
 
-    sarvam_api_key = os.environ["SARVAM_API_KEY"]
+    sarvam_api_key = os.environ.get("SARVAM_API_KEY", "")
 
-    # Pre-warm TTS for greeting in parallel with room setup
-    tts_instance = SarvamTTS(api_key=sarvam_api_key, language="gu-IN")
-    tts_instance.start_prewarm(GREETING)
+    # --- STT selection ---
+    if _USE_LOCAL_STT:
+        logger.info("using local STT: sarvamai/sarvam-2b-v0.5")
+        stt_instance = LocalSarvamSTT(language="unknown")
+    else:
+        stt_instance = SarvamSTT(api_key=sarvam_api_key, language="unknown")
+
+    # --- TTS + translator selection ---
+    if _USE_LOCAL_TTS:
+        logger.info("using local TTS: ai4bharat/indic-parler-tts")
+        tts_instance = LocalIndicTTS(language="gu-IN")
+        translator = None   # local TTS renders in the target language directly
+    else:
+        tts_instance = SarvamTTS(api_key=sarvam_api_key, language="gu-IN")
+        translator = SarvamTranslate(api_key=sarvam_api_key)
+        tts_instance.start_prewarm(GREETING)
 
     await ctx.connect()
 
@@ -95,7 +120,8 @@ async def entrypoint(ctx: JobContext) -> None:
     await session_mgr.create()          # sets state=IDENTIFYING, language=gu-IN
     await log_call_event(room_name, "call_started")
 
-    await tts_instance.await_prewarm()
+    if not _USE_LOCAL_TTS:
+        await tts_instance.await_prewarm()
 
     try:
         accounts = await get_mock_accounts()
@@ -105,12 +131,14 @@ async def entrypoint(ctx: JobContext) -> None:
         prompt = _SYSTEM_PROMPT_BASE
 
     session = AgentSession(
-        stt=SarvamSTT(api_key=sarvam_api_key, language="unknown"),
+        stt=stt_instance,
         llm=VLLMChat(
             base_url=os.environ.get("VLLM_BASE_URL", "http://vllm:8000/v1"),
             model=os.environ.get("VLLM_MODEL", "voice-agent"),
             session_manager=session_mgr,
             tts=tts_instance,
+            stt=stt_instance,
+            translator=translator,
             temperature=0.7,
             max_tokens=150,
         ),

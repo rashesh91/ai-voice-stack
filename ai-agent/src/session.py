@@ -74,6 +74,19 @@ class SessionManager:
     async def set_language(self, language: str):
         await self.lock_language(language)
 
+    async def get_pending_lang_switch(self) -> str | None:
+        r = await _get_redis()
+        val = await r.hget(self._key, "pending_lang_switch")
+        return val or None
+
+    async def set_pending_lang_switch(self, lang: str):
+        r = await _get_redis()
+        await r.hset(self._key, "pending_lang_switch", lang)
+
+    async def clear_pending_lang_switch(self):
+        r = await _get_redis()
+        await r.hdel(self._key, "pending_lang_switch")
+
     # ------------------------------------------------------------------
     # Conversation state (FSM)
     # ------------------------------------------------------------------

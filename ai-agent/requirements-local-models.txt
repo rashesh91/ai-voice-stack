@@ -1,0 +1,10 @@
+# Extra deps for local model inference (USE_LOCAL_STT / USE_LOCAL_TTS)
+# Install via: pip install -r requirements-local-models.txt
+torch>=2.3.0
+torchaudio>=2.3.0
+transformers>=4.44.0
+accelerate>=0.33.0
+parler-tts>=1.0.0
+resampy>=0.4.3
+numpy>=1.26.0
+soundfile>=0.12.1

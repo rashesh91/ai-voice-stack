@@ -50,6 +50,11 @@ class SarvamSTT(stt.STT):
         self._api_key = api_key
         self._language = language
 
+    def update_language(self, lang: str) -> None:
+        """Switch STT to a known language for better accuracy after detection."""
+        self._language = lang
+        logger.info("stt language → %s (improved accuracy)", lang)
+
     async def _recognize_impl(
         self,
         buffer: AudioBuffer,
@@ -84,7 +89,10 @@ class SarvamSTT(stt.STT):
                 data={"language_code": lang, "model": SARVAM_STT_MODEL, "mode": SARVAM_STT_MODE},
             )
 
-        if resp.status_code != 200:
+        if resp.status_code == 402:
+            logger.error("Sarvam STT quota exhausted (402) — top up credits at dashboard.sarvam.ai")
+            text = ""
+        elif resp.status_code != 200:
             logger.warning("Sarvam STT error %s: %s", resp.status_code, resp.text[:200])
             text = ""
         else:

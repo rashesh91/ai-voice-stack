@@ -4,7 +4,7 @@ metadata:
   name: ai-agent
   namespace: ai-voice
 spec:
-  replicas: 2                  # scale horizontally for concurrent calls
+  replicas: 1                  # local GPU models (sarvam-2b + parler-tts) load once per process; 1 replica keeps VRAM within 24 GB
   selector:
     matchLabels:
       app: ai-agent
@@ -44,28 +44,42 @@ spec:
                 secretKeyRef:
                   name: ai-voice-secrets
                   key: postgres-password
+            - name: CUDA_VISIBLE_DEVICES
+              value: "0"
+          volumeMounts:
+            - name: hf-cache
+              mountPath: /models/hub
           resources:
             requests:
-              cpu: "500m"
-              memory: "512Mi"
-            limits:
               cpu: "2"
-              memory: "2Gi"
+              memory: "8Gi"
+            limits:
+              cpu: "4"
+              memory: "12Gi"
           readinessProbe:
             httpGet:
               path: /health
               port: 8082
-            initialDelaySeconds: 15
-            periodSeconds: 10
-            failureThreshold: 6
+            initialDelaySeconds: 60
+            periodSeconds: 15
+            failureThreshold: 20
           livenessProbe:
             httpGet:
               path: /health
               port: 8082
-            initialDelaySeconds: 30
-            periodSeconds: 20
+            initialDelaySeconds: 90
+            periodSeconds: 30
             failureThreshold: 3
           lifecycle:
             preStop:
               exec:
                 command: ["/bin/sh", "-c", "sleep 15"]
+      volumes:
+        - name: hf-cache
+          hostPath:
+            path: /opt/models/hub
+            type: DirectoryOrCreate
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule

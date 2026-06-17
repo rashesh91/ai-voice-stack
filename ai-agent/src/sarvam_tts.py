@@ -16,8 +16,8 @@ SARVAM_TTS_URL = "https://api.sarvam.ai/text-to-speech"
 logger = logging.getLogger(__name__)
 
 LANGUAGE_TO_SPEAKER = {
-    "gu-IN": "vidya",
-    "hi-IN": "manisha",
+    "gu-IN": "ritu",
+    "hi-IN": "ritu",
     "en-IN": "ritu",
     "ta-IN": "ritu",
     "te-IN": "ritu",
@@ -28,11 +28,11 @@ LANGUAGE_TO_SPEAKER = {
 }
 
 _EMOTION_PARAMS: dict[str, dict[str, float]] = {
-    "normal":     {"pace": 0.9,  "pitch": 0},
-    "empathy":    {"pace": 0.78, "pitch": -0.05},
-    "urgent":     {"pace": 1.05, "pitch": 0.05},
-    "positive":   {"pace": 0.88, "pitch": 0.03},
-    "frustrated": {"pace": 0.80, "pitch": -0.03},
+    "normal":     {"pace": 1.0, "pitch": 0},
+    "empathy":    {"pace": 1.0, "pitch": 0},
+    "urgent":     {"pace": 1.0, "pitch": 0},
+    "positive":   {"pace": 1.0, "pitch": 0},
+    "frustrated": {"pace": 1.0, "pitch": 0},
 }
 
 _SENTENCE_END = re.compile(r'(?<=[.?!।॥])\s+')
@@ -58,16 +58,23 @@ class SarvamTTS(tts.TTS):
         self._api_key = api_key
         self._language = language
         self._speaker = LANGUAGE_TO_SPEAKER.get(language, "ritu")
-        self._pace: float = 0.9
+        self._pace: float = 1.0
         self._pitch: float = 0.0
         self._pcm_cache: dict[str, bytes] = {}
         self._warmup_tasks: list[asyncio.Task] = []
+
+    def update_language(self, lang: str) -> None:
+        """Switch TTS language after caller's language is detected."""
+        self._language = lang
+        self._speaker = LANGUAGE_TO_SPEAKER.get(lang, "ritu")
+        self._pcm_cache.clear()  # clear cache — different language, different audio
+        logger.info("tts language → %s speaker=%s", lang, self._speaker)
 
     def set_emotion(self, emotion: str) -> None:
         params = _EMOTION_PARAMS.get(emotion, _EMOTION_PARAMS["normal"])
         self._pace = params["pace"]
         self._pitch = params["pitch"]
-        logger.debug("emotion=%s pace=%.2f pitch=%.2f", emotion, self._pace, self._pitch)
+        logger.debug("emotion=%s pace=%.2f", emotion, self._pace)
 
     def start_prewarm(self, text: str) -> None:
         """Start background TTS generation for text sentences; results go to cache."""
@@ -120,7 +127,6 @@ class SarvamTTS(tts.TTS):
             "target_language_code": self._language,
             "speaker": self._speaker,
             "pace": self._pace,
-            "pitch": self._pitch,
             "speech_sample_rate": 16000,
             "model": "bulbul:v3",
             "pronunciation_dict_id": "p_6c46665c",
@@ -131,6 +137,9 @@ class SarvamTTS(tts.TTS):
         }
         async with httpx.AsyncClient(timeout=15.0) as client:
             resp = await client.post(SARVAM_TTS_URL, json=payload, headers=headers)
+        if resp.status_code == 402:
+            logger.error("Sarvam TTS quota exhausted (402) — top up credits at dashboard.sarvam.ai")
+            raise RuntimeError("Sarvam TTS: no credits available")
         resp.raise_for_status()
         wav_bytes = base64.b64decode(resp.json()["audios"][0])
         pcm = _wav_to_pcm(wav_bytes)

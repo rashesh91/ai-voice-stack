@@ -4,10 +4,10 @@ metadata:
   name: vllm-config
   namespace: ai-voice
 data:
-  MODEL_ID: "Qwen/Qwen2.5-1.5B-Instruct"
+  MODEL_ID: "Telugu-LLM-Labs/Indic-gemma-7b-finetuned-sft-Navarasa-2.0"
+  SERVED_MODEL_NAME: "indic-gemma"
   MAX_MODEL_LEN: "2048"
-  GPU_MEMORY_UTILIZATION: "0.60"
-  MAX_NUM_SEQS: "8"
-  MAX_LORA_RANK: "32"
+  GPU_MEMORY_UTILIZATION: "0.68"
+  MAX_NUM_SEQS: "4"
   HF_HOME: "/models/hub"
   TRANSFORMERS_CACHE: "/models/hub"

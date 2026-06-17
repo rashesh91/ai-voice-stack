@@ -41,12 +41,17 @@ def main(config_path: str):
 
     print(f"Loading base model: {model_cfg['base_model']}")
 
+    dtype = getattr(torch, model_cfg.get("torch_dtype", "bfloat16"))
     model = AutoModelForCausalLM.from_pretrained(
         model_cfg["base_model"],
-        dtype=torch.bfloat16,
+        torch_dtype=dtype,
         device_map="cuda:0",
         trust_remote_code=True,
     )
+    if train_cfg.get("gradient_checkpointing", False):
+        model.gradient_checkpointing_enable(
+            gradient_checkpointing_kwargs={"use_reentrant": False}
+        )
 
     tokenizer = AutoTokenizer.from_pretrained(model_cfg["base_model"], trust_remote_code=True)
     if tokenizer.pad_token is None:

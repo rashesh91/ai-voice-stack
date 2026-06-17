@@ -8,7 +8,11 @@ data:
   FREESWITCH_HOST: "localhost"       # hostNetwork — same node
   FREESWITCH_ESL_PORT: "8021"
   VLLM_BASE_URL: "http://vllm.ai-voice.svc.cluster.local:8000/v1"
-  VLLM_MODEL: "voice-agent"
+  VLLM_MODEL: "indic-gemma-ugvcl"
+  USE_LOCAL_STT: "true"
+  USE_LOCAL_TTS: "true"
+  HF_HOME: "/models/hub"
+  TRANSFORMERS_CACHE: "/models/hub"
   REDIS_URL: "redis://redis:6379/0"
   # DATABASE_URL is assembled in db.py from POSTGRES_PASSWORD (injected from Secret)
   POSTGRES_HOST: "postgres"

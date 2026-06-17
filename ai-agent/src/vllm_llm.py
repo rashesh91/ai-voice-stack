@@ -15,36 +15,72 @@ _LANG_SUFFIX = {
     "en-IN": "\nRespond in English only.",
 }
 
-# Standalone system prompt for LLM fallback — no 19121 redirect, fully agentic
+# Standalone system prompt for LLM fallback (base model, not LoRA)
 _LLM_FALLBACK_SYSTEM = {
     "gu-IN": (
-        "Tame UGVCL electricity AI customer care assistant chho. "
-        "Caller na saval no short, helpful jawab Gujaratima apo (1-2 sentence). "
-        "UGVCL: Payment: mpay.guvnl.in. Complaint: aamaari system ma register thashe. "
+        "Tame UGVCL (Uttar Gujarat Vij Company) electricity helpline AI chho. "
+        "Caller ni vij samasya no short jawab Gujaratima apo — 1 sentence. "
+        "UGVCL facts: Payment: mpay dot guvnl dot in. "
+        "NEFT: account UGVCLLTZ pachhi 11 digit consumer number, Bank of Baroda, IFSC BARB zero ALKAPU. "
+        "Complaint/power outage: aamaari system ma register thashe, team 2-4 kalas ma avshe. "
         "New connection: SDN office ma Aadhaar + index copy. "
-        "Agar jaavab na khavdate to kaho: 'Tmaari request note thayi chhe, aamaaro team 2 kalas ma sampark karshe.' "
-        "KABHI 'website visit karo', 'click karo', 'screenshot' na kaho. "
-        "FAQT GUJARATIMA JAVAB APO."
+        "Office: Monday-Saturday 10:30 AM thi 6 PM. "
+        "Agar saval electricity sathe related na hoy to: 'Krupaya aapni vij ni samasya janavvo.' "
+        "Agar jaavab khavdate to: 'Tamari request note thayi chhe, team 2 kalas ma sampark karshe.' "
+        "KABHI 19121 na kaho. FAQT GUJARATIMA JAVAB APO."
     ),
     "hi-IN": (
-        "Aap UGVCL electricity AI customer care assistant hain. "
-        "Caller ke sawal ka short, helpful jawab Hindi mein dijiye (1-2 sentence). "
-        "UGVCL: Payment: mpay.guvnl.in. Complaint: hamare system mein register hogi. "
+        "Aap UGVCL (Uttar Gujarat Vij Company) electricity helpline AI hain. "
+        "Caller ki bijli samasya ka jawab Hindi mein dijiye — 1 sentence. "
+        "UGVCL facts: Payment: mpay dot guvnl dot in. "
+        "NEFT: account UGVCLLTZ phir 11 digit consumer number, Bank of Baroda, IFSC BARB zero ALKAPU. "
+        "Complaint/bijli nahi: hamare system mein register hogi, team 2-4 ghante mein aayegi. "
         "New connection: SDN office mein Aadhaar + index copy. "
-        "Agar jawab na pata ho to kahein: 'Aapki request note ho gayi hai, hamari team 2 ghante mein sampark karegi.' "
-        "KABHI 'website visit karein', 'click karein', 'screenshot' mat kahein. "
-        "SIRF HINDI MEIN JAWAB DO."
+        "Office: weekdays 10:30 AM se 6 PM. "
+        "Agar sawaal bijli se related na ho to: 'Kripaya apni bijli ki samasya batayein.' "
+        "Agar jawab na pata ho to: 'Aapki request note ho gayi hai, team 2 ghante mein sampark karegi.' "
+        "KABHI 19121 mat bolein. SIRF HINDI MEIN JAWAB DO."
     ),
     "en-IN": (
-        "You are the UGVCL electricity AI customer care assistant. "
-        "Give a short, helpful answer to the caller's question (1-2 sentences). "
-        "UGVCL: Payment: mpay.guvnl.in. Complaints: registered in our system. "
+        "You are a UGVCL electricity helpline AI assistant. "
+        "Answer the caller's electricity question in 1 sentence in English. "
+        "UGVCL facts: Payment: mpay dot guvnl dot in. "
+        "NEFT: account UGVCLLTZ plus 11-digit consumer number, Bank of Baroda, IFSC BARB zero ALKAPU. "
+        "Complaint/power outage: registered in our system, team arrives in 2-4 hours. "
         "New connection: SDN office with Aadhaar and index copy. "
-        "If unsure, say: 'Your request has been noted, our team will contact you within 2 hours.' "
-        "NEVER say 'visit website', 'click', or 'screenshot'. "
-        "Respond in English only."
+        "Office: weekdays 10:30 AM to 6 PM. "
+        "If not electricity-related: say 'Please describe your electricity issue.' "
+        "If unsure: say 'Your request is noted, our team will call back within 2 hours.' "
+        "NEVER say 19121. Respond in English only."
     ),
 }
+
+# Electricity-related words — if NONE present in user text, it's noise/off-topic
+_ELECTRICITY_WORDS = {
+    # Gujarati romanized
+    "vij", "light", "bill", "meter", "bijli", "payment", "connection", "solar",
+    "transformer", "recharge", "ugvcl", "mpay", "sdn", "current", "supply",
+    "fuse", "complaint", "reading", "voltage", "disconnect", "reconnect",
+    "prepaid", "neft", "ifsc", "consumer", "account",
+    # Hindi Unicode
+    "बिजली", "बिल", "मीटर", "भुगतान", "कनेक्शन", "ट्रांसफार्मर", "रीचार्ज",
+    "शिकायत", "वोल्टेज", "सप्लाई", "उपभोक्ता",
+    # English
+    "electricity", "power", "outage", "pay", "invoice", "wiring", "wire",
+    "pole", "fault", "mcb", "trip",
+}
+
+_OFF_TOPIC_RESPONSE = {
+    "gu-IN": "Maafi mangu chu, mane samjayun nahi. Krupaya aapni vij ni samasya janavvo.",
+    "hi-IN": "Maafi chahti hoon, baat samajh nahi aayi. Kripaya apni bijli ki samasya batayein.",
+    "en-IN": "I'm sorry, I didn't catch that. Could you please describe your electricity issue?",
+}
+
+
+def _has_electricity_context(text: str) -> bool:
+    """Return True if text contains at least one electricity-related word."""
+    lower = text.lower()
+    return any(w in lower for w in _ELECTRICITY_WORDS)
 
 
 _19121_REDIRECT_PATTERN = re.compile(
@@ -156,6 +192,52 @@ def _extract_digits(text: str) -> str | None:
     return None
 
 
+# Confirmation messages when locked language changes
+_LANG_SWITCH_CONFIRM: dict[str, dict[str, str]] = {
+    "gu-IN": {
+        "hi-IN": "Tamne Hindi ma vaat karavani chhe? Ha ke Na bolsho.",
+        "en-IN": "Would you like to switch to English? Please say Yes or No.",
+    },
+    "hi-IN": {
+        "gu-IN": "Kya aap Gujarati mein baat karna chahenge? Haan ya Na bolein.",
+        "en-IN": "Would you like to switch to English? Please say Yes or No.",
+    },
+    "en-IN": {
+        "gu-IN": "Gujaratima switch karavu chhe? Ha ke Na bolsho.",
+        "hi-IN": "Kya Hindi mein switch karna hai? Haan ya Na bolein.",
+    },
+}
+_LANG_SWITCH_DONE: dict[tuple, str] = {
+    ("gu-IN", "hi-IN"): "Ji, ab Hindi mein baat karte hain.",
+    ("gu-IN", "en-IN"): "Sure, switching to English now.",
+    ("hi-IN", "gu-IN"): "Ji, hu have Gujaratima vaat karishu.",
+    ("hi-IN", "en-IN"): "Sure, switching to English now.",
+    ("en-IN", "gu-IN"): "Ji, Gujaratima continue kariye.",
+    ("en-IN", "hi-IN"): "Ji, ab Hindi mein baat karte hain.",
+}
+_LANG_SWITCH_CANCELLED: dict[str, str] = {
+    "gu-IN": "Thik chhe ji, Gujaratima j continue kariye.",
+    "hi-IN": "Thik hai ji, Hindi mein hi continue karte hain.",
+    "en-IN": "Alright, let's continue in English.",
+}
+
+# Words that confirm "yes" across all three languages
+_AFFIRMATIVES = {"ha", "haa", "haan", "han", "yes", "yep", "ya", "ji", "bilkul",
+                 "zarur", "okay", "ok", "thik", "theek", "sure", "correct", "right"}
+# Words that confirm "no"
+_NEGATIVES = {"na", "nahi", "naa", "no", "nope", "nathi", "mat", "band", "nai"}
+
+
+def _is_affirmative(text: str) -> bool:
+    words = set(text.lower().split())
+    return bool(words & _AFFIRMATIVES) and not bool(words & _NEGATIVES)
+
+
+def _is_negative(text: str) -> bool:
+    words = set(text.lower().split())
+    return bool(words & _NEGATIVES)
+
+
 class VLLMChat(llm.LLM):
     def __init__(
         self,
@@ -164,6 +246,8 @@ class VLLMChat(llm.LLM):
         model: str,
         session_manager=None,
         tts=None,
+        stt=None,
+        translator=None,
         temperature: float = 0.7,
         max_tokens: int = 150,
         repetition_penalty: float = 1.3,
@@ -173,6 +257,8 @@ class VLLMChat(llm.LLM):
         self._model = model
         self._session_manager = session_manager
         self._tts = tts
+        self._stt = stt
+        self._translator = translator
         self._temperature = temperature
         self._max_tokens = max_tokens
         self._repetition_penalty = repetition_penalty
@@ -201,28 +287,40 @@ class VLLMStream(llm.LLMStream):
             delta=ChoiceDelta(role="assistant", content=_tts_fix(text)),
         ))
 
-    async def _call_vllm(self, messages: list, lang: str = "en-IN") -> None:
+    async def _async_emit(self, text: str, lang: str, translate: bool = False) -> None:
+        """Emit text to TTS. Only translate when caller lang differs from text lang (LLM fallback)."""
+        if translate and self._llm._translator is not None:
+            source = _detect_language(text)
+            if source != lang:
+                text = await self._llm._translator.to_lang(text, source_lang=source, target_lang=lang)
+        self._emit(text)
+
+    async def _call_vllm(self, messages: list, lang: str = "en-IN", model: str | None = None,
+                         max_tokens: int | None = None, temperature: float | None = None) -> None:
+        use_model = model or self._llm._model
         stream = await self._llm._client.chat.completions.create(
-            model=self._llm._model,
+            model=use_model,
             messages=messages,
-            temperature=self._llm._temperature,
-            max_tokens=self._llm._max_tokens,
+            temperature=temperature if temperature is not None else self._llm._temperature,
+            max_tokens=max_tokens if max_tokens is not None else self._llm._max_tokens,
             extra_body={"repetition_penalty": self._llm._repetition_penalty},
             stream=True,
         )
+        # Buffer full LLM response so we can translate before speaking
+        full_text = ""
         async for chunk in stream:
             if not chunk.choices:
                 continue
             delta = chunk.choices[0].delta
             if delta.content:
-                clean = _strip_19121(_tts_fix(delta.content), lang)
-                self._event_ch.send_nowait(ChatChunk(
-                    id=chunk.id,
-                    delta=ChoiceDelta(role="assistant", content=clean),
-                ))
+                full_text += delta.content
+
+        if full_text:
+            clean = _strip_19121(_tts_fix(full_text), lang)
+            await self._async_emit(clean, lang, translate=True)
 
     async def _run(self) -> None:
-        from .intent import classify_intent, build_reply, t as fsm_t
+        from .intent import classify_intent, build_reply, t as fsm_t, _pick
         from .db import get_account_by_number
         from .session import SessionManager
 
@@ -242,21 +340,71 @@ class VLLMStream(llm.LLMStream):
             await self._call_vllm(messages)
             return
 
-        # --- Auto language detection (every turn, script-confidence based) ---
+        # --- Language detection + lock + confirmation gate ---
         stripped = last_user_text.strip()
         is_digit_only = bool(re.match(r'^[\d\s\-\+,.]+$', stripped))
+        lang = await session.get_language()
+        is_locked = await session.is_language_locked()
+
+        # Check for a pending language-switch confirmation first
+        pending_switch = await session.get_pending_lang_switch()
+        if pending_switch:
+            if _is_affirmative(stripped):
+                # Customer confirmed — do the switch
+                old_lang = lang
+                await session.lock_language(pending_switch)
+                await session.clear_pending_lang_switch()
+                if self._llm._tts is not None:
+                    self._llm._tts.update_language(pending_switch)
+                if self._llm._stt is not None:
+                    self._llm._stt.update_language(pending_switch)
+                lang = pending_switch
+                done_msg = _LANG_SWITCH_DONE.get((old_lang, lang), "Language updated.")
+                logger.info("lang_switch_confirmed %s → %s", old_lang, lang)
+                await self._async_emit(done_msg, lang)
+                return
+            else:
+                # Customer said no (or spoke about something else) — cancel and process normally
+                await session.clear_pending_lang_switch()
+                if not _is_negative(stripped):
+                    # They said something useful — fall through and process the message
+                    logger.info("lang_switch_cancelled — processing message in %s", lang)
+                else:
+                    await self._async_emit(_LANG_SWITCH_CANCELLED.get(lang, "Continuing."), lang)
+                    return
+
+        # Normal language detection — only act when text is non-trivial
         if len(stripped) >= 4 and not is_digit_only:
             detected, script_chars = _script_confidence(last_user_text)
-            current_lang = await session.get_language()
             if script_chars >= 3:
-                # High confidence — clear script detected (Gujarati or Hindi unicode chars)
-                if detected != current_lang:
-                    logger.info("auto_lang_switch %s → %s (script_chars=%d)", current_lang, detected, script_chars)
+                if not is_locked:
+                    # First clear detection — lock language and update STT+TTS
+                    logger.info("lang_lock %s → %s (script_chars=%d)", lang, detected, script_chars)
                     await session.lock_language(detected)
-            elif not await session.is_language_locked() and script_chars == 0 and len(stripped) >= 8:
-                # Romanized text, no lock yet — use heuristic detect for initial lock only
+                    lang = detected
+                    if self._llm._tts is not None:
+                        self._llm._tts.update_language(detected)
+                    if self._llm._stt is not None:
+                        self._llm._stt.update_language(detected)
+                elif detected != lang and script_chars >= 5:
+                    # Language IS locked but caller switched to a clearly different script
+                    # Ask for confirmation before changing
+                    confirm = _LANG_SWITCH_CONFIRM.get(lang, {}).get(detected)
+                    if confirm:
+                        logger.info("lang_switch_pending %s → %s, asking confirmation", lang, detected)
+                        await session.set_pending_lang_switch(detected)
+                        await self._async_emit(confirm, lang)
+                        return
+            elif not is_locked and script_chars == 0 and len(stripped) >= 8:
+                # Romanised text only — heuristic detect for initial lock
                 lang_guess = _detect_language(last_user_text)
                 await session.lock_language(lang_guess)
+                lang = lang_guess
+                if self._llm._tts is not None:
+                    self._llm._tts.update_language(lang_guess)
+                if self._llm._stt is not None:
+                    self._llm._stt.update_language(lang_guess)
+
         lang = await session.get_language()
 
         state = await session.get_state()
@@ -287,7 +435,7 @@ class VLLMStream(llm.LLMStream):
                         digits = combined[:11] if len(combined) >= 11 else combined
                         await session.set_partial_digits("")
                     else:
-                        self._emit(fsm_t("ask_more_digits", lang))
+                        await self._async_emit(fsm_t("ask_more_digits", lang), lang)
                         return
 
             if digits:
@@ -299,22 +447,22 @@ class VLLMStream(llm.LLMStream):
                     reply = fsm_t("identified", lang,
                                   name=account["name"], plan=account["plan"])
                     logger.info("consumer_identified name=%s", account["name"])
-                    self._emit(reply)
+                    await self._async_emit(reply, lang)
                     return
                 else:
                     retry = await session.increment_identify_retry()
                     if retry <= 1:
-                        self._emit(fsm_t("account_not_found_retry", lang))
+                        await self._async_emit(fsm_t("account_not_found_retry", lang), lang)
                         return
                     # 2nd failed attempt — continue without account
                     await session.set_state(SessionManager.HANDLING)
-                    self._emit(fsm_t("continue_without", lang))
+                    await self._async_emit(fsm_t("continue_without", lang), lang)
                     return
             else:
                 # No digits at all — count as retry
                 retry = await session.increment_identify_retry()
                 if retry <= 1:
-                    self._emit(fsm_t("ask_consumer_number", lang))
+                    await self._async_emit(fsm_t("ask_consumer_number", lang), lang)
                     return
                 # User not giving a number — move to HANDLING and treat as query
                 await session.set_state(SessionManager.HANDLING)
@@ -342,22 +490,35 @@ class VLLMStream(llm.LLMStream):
 
             if intent != "UNKNOWN":
                 consumer = await session.get_consumer()
+
+                # Raise a ticket for complaint intents
+                ticket_id: str | None = None
+                _TICKET_INTENTS = {"POWER_OUTAGE", "SMART_METER", "HIGH_BILL"}
+                if intent in _TICKET_INTENTS:
+                    import asyncio
+                    from .ticket_db import create_ticket
+                    account_no = (consumer.get("account_no") or "UNKNOWN") if consumer else "UNKNOWN"
+                    ticket_id = await asyncio.get_event_loop().run_in_executor(
+                        None, create_ticket, account_no, intent, last_user_text[:200]
+                    )
+
                 # Try specific sub-topic answer first; fall back to generic intent reply
                 specific = knowledge_lookup(intent, last_user_text, lang)
                 if specific:
                     logger.info("knowledge_hit intent=%s lang=%s", intent, lang)
-                    # Prepend empathy/frustrated prefix for complaint intents
-                    from .intent import _EMPATHY_PREFIX, _FRUSTRATED_PREFIX
+                    from .intent import _EMPATHY_PREFIX, _FRUSTRATED_PREFIX, _TICKET_SUFFIX, _TICKET_INTENTS as _TI
                     if frustrated:
-                        prefix = _FRUSTRATED_PREFIX.get(lang, "")
+                        prefix = _pick(_FRUSTRATED_PREFIX.get(lang, ""))
                     else:
-                        prefix = _EMPATHY_PREFIX.get(intent, {}).get(lang, "")
+                        prefix = _pick(_EMPATHY_PREFIX.get(intent, {}).get(lang, ""))
                     reply = prefix + specific
+                    if ticket_id and intent in _TI:
+                        reply += _TICKET_SUFFIX.get(lang, _TICKET_SUFFIX["en-IN"]).format(ticket_id=ticket_id)
                 else:
-                    reply = build_reply(intent, consumer, lang, frustrated=frustrated)
+                    reply = build_reply(intent, consumer, lang, frustrated=frustrated, ticket_id=ticket_id)
                 # Stay in HANDLING — allow follow-up questions
                 follow_up = fsm_t("follow_up", lang)
-                self._emit(reply + follow_up)
+                await self._async_emit(reply + follow_up, lang)
                 return
             else:
                 # Try knowledge lookup across all intents before hitting LLM
@@ -370,14 +531,17 @@ class VLLMStream(llm.LLMStream):
                         break
                 if kb_answer:
                     follow_up = fsm_t("follow_up", lang)
-                    self._emit(kb_answer + follow_up)
+                    await self._async_emit(kb_answer + follow_up, lang)
                     return
 
                 # No knowledge hit — call trained vLLM with agentic system prompt (no 19121 redirect)
                 logger.info("unknown_intent — calling trained vLLM (lang=%s)", lang)
-                lm = [m for m in messages if m["role"] != "system"]
-                lm.insert(0, {"role": "system", "content": _LLM_FALLBACK_SYSTEM.get(lang, _LLM_FALLBACK_SYSTEM["en-IN"])})
-                await self._call_vllm(lm, lang=lang)
+                # Send ONLY system + last user message — full history causes garbage accumulation
+                lm = [
+                    {"role": "system", "content": _LLM_FALLBACK_SYSTEM.get(lang, _LLM_FALLBACK_SYSTEM["en-IN"])},
+                    {"role": "user", "content": last_user_text},
+                ]
+                await self._call_vllm(lm, lang=lang, max_tokens=80, temperature=0.2)
                 # Stay in HANDLING after LLM reply — user can ask more
                 return
 
