@@ -1,0 +1,38 @@
+{
+  "pronunciations": {
+    "en-IN": {
+      "UGVCL": "U G V C L",
+      "NEFT": "N E F T",
+      "UPI": "U P I",
+      "SDN": "S D N",
+      "IFSC": "I F S C",
+      "MCB": "M C B",
+      "ELCB": "E L C B",
+      "RDSS": "R D S S",
+      "KWH": "K W H",
+      "OTP": "O T P",
+      "SMS": "S M S",
+      "LT": "L T"
+    },
+    "hi-IN": {
+      "UGVCL": "यू जी वी सी एल",
+      "NEFT": "एन ई एफ टी",
+      "UPI": "यू पी आई",
+      "SDN": "एस डी एन",
+      "IFSC": "आई एफ एस सी",
+      "MCB": "एम सी बी",
+      "OTP": "ओ टी पी",
+      "SMS": "एस एम एस"
+    },
+    "gu-IN": {
+      "UGVCL": "U G V C L",
+      "NEFT": "N E F T",
+      "UPI": "U P I",
+      "SDN": "S D N",
+      "IFSC": "I F S C",
+      "MCB": "M C B",
+      "OTP": "O T P",
+      "SMS": "S M S"
+    }
+  }
+}

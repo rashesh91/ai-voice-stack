@@ -18,20 +18,21 @@ spec:
           image: vllm/vllm-openai:v0.6.6
           args:
             - "--model"
-            - "bartowski/Llama-3.2-3B-Instruct-AWQ"   # 3B vs 8B: ~200 tok/s vs ~90 tok/s on L4
-            - "--quantization"
-            - "awq"
-            - "--max-model-len"
-            - "4096"
+            - "Qwen/Qwen2.5-1.5B-Instruct"
+            - "--dtype"
+            - "bfloat16"
+            - "--enforce-eager"
             - "--gpu-memory-utilization"
-            - "0.7"                                    # 3B needs less VRAM; leave headroom
-            - "--max-num-seqs"
-            - "16"
-            - "--enable-chunked-prefill"               # overlaps prefill+decode → lower TTFT
-            - "--kv-cache-dtype"
-            - "fp8"                                    # halves KV cache memory
-            - "--max-num-batched-tokens"
+            - "0.60"
+            - "--max-model-len"
             - "2048"
+            - "--enable-lora"
+            - "--lora-modules"
+            - "voice-agent=/lora-adapter"
+            - "--max-lora-rank"
+            - "32"
+            - "--max-num-seqs"
+            - "8"
             - "--host"
             - "0.0.0.0"
             - "--port"
@@ -46,32 +47,39 @@ spec:
           volumeMounts:
             - name: models
               mountPath: /models
+            - name: lora-adapter
+              mountPath: /lora-adapter
           resources:
             requests:
               cpu: "4"
-              memory: "8Gi"
+              memory: "6Gi"
               nvidia.com/gpu: "1"
             limits:
               cpu: "8"
-              memory: "12Gi"
+              memory: "10Gi"
               nvidia.com/gpu: "1"
           readinessProbe:
             httpGet:
               path: /health
               port: 8000
-            initialDelaySeconds: 60
+            initialDelaySeconds: 90
             periodSeconds: 10
             failureThreshold: 30
           livenessProbe:
             httpGet:
               path: /health
               port: 8000
-            initialDelaySeconds: 120
+            initialDelaySeconds: 150
             periodSeconds: 30
+            failureThreshold: 3
       volumes:
         - name: models
           persistentVolumeClaim:
             claimName: vllm-models-pvc
+        - name: lora-adapter
+          hostPath:
+            path: /opt/ai-voice-stack/data/lora-adapter
+            type: DirectoryOrCreate
       tolerations:
         - key: nvidia.com/gpu
           operator: Exists

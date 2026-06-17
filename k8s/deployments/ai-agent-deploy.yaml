@@ -13,12 +13,13 @@ spec:
       labels:
         app: ai-agent
     spec:
+      terminationGracePeriodSeconds: 60
       containers:
         - name: ai-agent
           image: localhost:5000/ai-agent:latest
           command: ["python", "-m", "src.main"]
           ports:
-            - containerPort: 8081
+            - containerPort: 8082
           envFrom:
             - configMapRef:
                 name: ai-agent-config
@@ -52,8 +53,19 @@ spec:
               memory: "2Gi"
           readinessProbe:
             httpGet:
-              path: /
-              port: 8081
+              path: /health
+              port: 8082
             initialDelaySeconds: 15
             periodSeconds: 10
             failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8082
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            failureThreshold: 3
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 15"]

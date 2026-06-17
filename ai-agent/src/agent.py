@@ -3,8 +3,8 @@ import logging
 import os
 import time
 
-from livekit.agents import Agent, AgentSession, JobContext, WorkerOptions, cli
-from livekit.plugins import silero
+from livekit.agents import Agent, AgentSession, JobContext, RoomInputOptions, WorkerOptions, cli
+from livekit.plugins import silero, noise_cancellation
 
 from .sarvam_stt import SarvamSTT
 from .sarvam_tts import SarvamTTS
@@ -14,18 +14,32 @@ from .db import init_db, log_call_event, get_mock_accounts
 
 logger = logging.getLogger(__name__)
 
-GREETING = "नमस्ते! मैं आपकी कैसे मदद कर सकता हूँ?"
+# Greeting asks for consumer / mobile number to start FSM identification
+GREETING = (
+    "નમસ્તે! UGVCL ગ્રાહક સેવામાં સ્વાગત. "
+    "Consumer number અથવા registered mobile number આપો."
+)
 
 _SYSTEM_PROMPT_BASE = (
-    "You are a helpful AI voice assistant for a telecom and billing customer support helpline in India. "
-    "You assist callers with: billing queries (बिल/bill), internet and broadband issues, mobile recharges, "
-    "EMI and payment problems, KYC verification, account issues, complaints, and service requests. "
-    "Respond concisely — your responses will be spoken aloud. Keep answers to 1-2 sentences. "
-    "Detect the caller's language and always respond in that same language. "
-    "You support Hindi, English, Tamil, Telugu, Kannada, Malayalam, Bengali, Gujarati, Marathi, and Hinglish. "
-    "IMPORTANT: Voice transcription may have minor errors in a telecom context. "
-    "If you see 'दिल', 'दिन', 'मिल', or 'मिल्क' in a billing query, it likely means 'बिल' (bill). "
-    "Always interpret ambiguous words in the context of telecom and billing support."
+    "You are a voice assistant for U.G.V.C.L. (Uttar Gujarat Vij Company Limited) electricity helpline. "
+    "STRICT RULES:\n"
+    "1. Match the caller's language exactly — Gujarati, Hindi, or English. Never switch languages mid-reply.\n"
+    "2. Response must be 1-2 short spoken sentences only. No lists, no bullet points.\n"
+    "3. NEVER say 'screenshot', 'click', 'see attachment', or 'fill the form online'.\n"
+    "4. NEVER invent URLs, phone numbers, or procedures not listed below.\n"
+    "5. If you do not know the exact answer, say our team will look into it and assist shortly.\n\n"
+    "UGVCL FACTS (use only these):\n"
+    "- Payment: mpay.guvnl.in OR NEFT UGVCLLTZ + 11-digit consumer number, Bank of Baroda, IFSC BARB0ALKAPU.\n"
+    "- Complaint / Power outage: Register in this system — field team dispatched within 2-4 hours.\n"
+    "- Solar bill: Import units minus Export units = net billed units. Excess export credited to bank every June.\n"
+    "- Smart meter complaint: Register in this system — technician visits within 2-3 working days.\n"
+    "- Prepaid: balance zero disconnects supply. Recharge at mpay.guvnl.in. 3% rebate.\n"
+    "- Reconnection: pay bill, 2-3 working days.\n"
+    "- New connection: visit SDN office with Aadhaar and index copy.\n"
+    "- Mobile registration: ugvcl.com Consumer Online Service — link mobile option.\n"
+    "- High bill/wrong reading: within 5 days of bill date, visit SDN office with meter photo.\n"
+    "- Smart meter billing: monthly only — bi-monthly/quarterly not available.\n"
+    "- Office hours: weekdays 10:30 AM to 6:00 PM at nearest UGVCL SDN office.\n"
 )
 
 
@@ -33,25 +47,24 @@ def _build_system_prompt(accounts: list[dict]) -> str:
     if not accounts:
         return _SYSTEM_PROMPT_BASE
     lines = [
-        "\n\nDemo account data — use this when callers give their mobile number:",
-        "| Mobile     | Name             | Bill   | Due Date    | Plan                   | Account | Last Payment    | Notes |",
-        "|------------|------------------|--------|-------------|------------------------|---------|-----------------|-------|",
+        "\n\nDemo account data — use this when callers give their consumer number or mobile:",
+        "| Mobile     | Name             | Bill     | Due Date    | Plan                  | Account No  | Notes |",
+        "|------------|------------------|----------|-------------|------------------------|-------------|-------|",
     ]
     for a in accounts:
-        notes = a.get("notes", "") or ""
+        notes = (a.get("notes") or "")[:50]
         lines.append(
-            f"| {a['mobile']} | {a['name']:<16} | {a.get('bill_amount','₹0'):<6} | "
+            f"| {a['mobile']} | {a['name']:<16} | {a.get('bill_amount','₹0'):<8} | "
             f"{a.get('due_date','—'):<11} | {a.get('plan',''):<22} | "
-            f"{a.get('account_no',''):<7} | {a.get('last_payment','—'):<15} | {notes[:40]} |"
+            f"{a.get('account_no',''):<11} | {notes} |"
         )
     lines.append(
-        "\nIf the caller's number is not listed, say their account was not found and ask them to verify."
-        "\nWhen giving bill info, always mention: amount, due date, and whether it is overdue."
+        "\nIf caller's number matches, give their exact bill and due date. "
+        "If not found, say account not found and offer 19121."
     )
     return _SYSTEM_PROMPT_BASE + "\n".join(lines)
 
 
-# Fallback prompt used if DB fetch fails
 SYSTEM_PROMPT = _SYSTEM_PROMPT_BASE
 
 
@@ -72,23 +85,18 @@ async def entrypoint(ctx: JobContext) -> None:
 
     sarvam_api_key = os.environ["SARVAM_API_KEY"]
 
-    # Start pre-warming greeting TTS immediately — runs in parallel with room setup
-    tts_instance = SarvamTTS(api_key=sarvam_api_key, language="hi-IN")
+    # Pre-warm TTS for greeting in parallel with room setup
+    tts_instance = SarvamTTS(api_key=sarvam_api_key, language="gu-IN")
     tts_instance.start_prewarm(GREETING)
 
     await ctx.connect()
 
     session_mgr = SessionManager(room_name)
-    await session_mgr.create()
+    await session_mgr.create()          # sets state=IDENTIFYING, language=gu-IN
     await log_call_event(room_name, "call_started")
 
-    language = await session_mgr.get_language()
+    await tts_instance.await_prewarm()
 
-    # If session language differs from hi-IN, create a new TTS for it
-    if language != "hi-IN":
-        tts_instance = SarvamTTS(api_key=sarvam_api_key, language=language)
-
-    # Load mock accounts from DB and build dynamic system prompt
     try:
         accounts = await get_mock_accounts()
         prompt = _build_system_prompt(accounts)
@@ -96,33 +104,57 @@ async def entrypoint(ctx: JobContext) -> None:
         logger.warning("Failed to load mock accounts — using base prompt")
         prompt = _SYSTEM_PROMPT_BASE
 
-    # Wait for pre-warm to finish before starting session (greeting is already cached)
-    await tts_instance.await_prewarm()
-
     session = AgentSession(
         stt=SarvamSTT(api_key=sarvam_api_key, language="unknown"),
         llm=VLLMChat(
             base_url=os.environ.get("VLLM_BASE_URL", "http://vllm:8000/v1"),
-            model=os.environ.get("VLLM_MODEL", "bartowski/Llama-3.2-3B-Instruct-AWQ"),
+            model=os.environ.get("VLLM_MODEL", "voice-agent"),
+            session_manager=session_mgr,
+            tts=tts_instance,
             temperature=0.7,
-            max_tokens=200,
+            max_tokens=150,
         ),
         tts=tts_instance,
         vad=silero.VAD.load(
-            min_silence_duration=0.3,
-            min_speech_duration=0.1,
-            prefix_padding_duration=0.2,
+            min_silence_duration=0.5,   # longer pause needed to end turn (noise tolerance)
+            min_speech_duration=0.25,   # ignore noise bursts < 250ms
+            prefix_padding_duration=0.3,
+            activation_threshold=0.6,   # higher threshold — less sensitive to background noise
         ),
         allow_interruptions=True,
-        min_endpointing_delay=0.3,
-        max_endpointing_delay=1.2,
+        min_endpointing_delay=0.5,
+        max_endpointing_delay=2.5,      # wait longer for speech in noisy environments
     )
 
     _first_speech = True
 
+    # Supported Unicode script ranges: Gujarati, Devanagari (Hindi), Basic Latin (English)
+    _SUPPORTED_SCRIPTS = (
+        ('઀', '૿'),  # Gujarati
+        ('ऀ', 'ॿ'),  # Devanagari (Hindi)
+        (' ', ''),  # Basic Latin (English + digits)
+    )
+
+    def _is_valid_transcript(text: str) -> bool:
+        """Filter out STT noise artifacts: too short, or foreign-script hallucinations."""
+        text = text.strip()
+        if len(text) < 2:
+            return False
+        # Check if any char is from a non-supported script (noise artifact from background)
+        foreign = sum(
+            1 for c in text
+            if c.isalpha() and not any(lo <= c <= hi for lo, hi in _SUPPORTED_SCRIPTS)
+        )
+        total_alpha = sum(1 for c in text if c.isalpha())
+        # Reject if >40% of alphabetic chars are from unsupported scripts
+        if total_alpha > 0 and foreign / total_alpha > 0.4:
+            logger.info("noise_filtered transcript=%r (foreign=%.0f%%)", text[:40], 100 * foreign / total_alpha)
+            return False
+        return True
+
     def on_transcript(event):
         text = getattr(event, "transcript", "") or getattr(event, "text", "")
-        if text:
+        if text and _is_valid_transcript(text):
             asyncio.create_task(session_mgr.append_turn("user", text))
             asyncio.create_task(log_call_event(room_name, "user_speech", text))
 
@@ -145,7 +177,14 @@ async def entrypoint(ctx: JobContext) -> None:
     session.on("conversation_item_added", on_conversation_item)
 
     agent = VoiceAgent(instructions=prompt)
-    await session.start(agent, room=ctx.room, capture_run=True)
+    await session.start(
+        agent,
+        room=ctx.room,
+        capture_run=True,
+        room_input_options=RoomInputOptions(
+            noise_cancellation=noise_cancellation.BVCTelephony(),
+        ),
+    )
 
 
 if __name__ == "__main__":

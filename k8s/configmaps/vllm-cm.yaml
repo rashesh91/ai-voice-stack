@@ -4,10 +4,10 @@ metadata:
   name: vllm-config
   namespace: ai-voice
 data:
-  MODEL_ID: "bartowski/Llama-3.2-3B-Instruct-AWQ"
-  QUANTIZATION: "awq"
-  MAX_MODEL_LEN: "4096"
-  GPU_MEMORY_UTILIZATION: "0.85"
-  MAX_NUM_SEQS: "32"
+  MODEL_ID: "Qwen/Qwen2.5-1.5B-Instruct"
+  MAX_MODEL_LEN: "2048"
+  GPU_MEMORY_UTILIZATION: "0.60"
+  MAX_NUM_SEQS: "8"
+  MAX_LORA_RANK: "32"
   HF_HOME: "/models/hub"
   TRANSFORMERS_CACHE: "/models/hub"

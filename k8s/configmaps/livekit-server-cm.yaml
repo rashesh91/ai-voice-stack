@@ -18,9 +18,6 @@ data:
       auto_create: true
       empty_timeout: 300
       max_participants: 2
-    sip:
-      enabled: true
-      port: 5080
     logging:
       level: info
       json: true

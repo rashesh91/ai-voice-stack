@@ -51,31 +51,32 @@ async def _create_tables():
 
 
 _DEFAULT_ACCOUNTS = [
-    ("9876543210", "Ramesh Kumar",  "₹450",  "20 Jun 2026", "99 GB Data Pack",          "ACC001", "₹450 on 15 May",  ""),
-    ("9876543211", "Priya Sharma",  "₹780",  "25 Jun 2026", "Unlimited Calls",           "ACC002", "₹780 on 10 May",  "Has EMI of ₹199/month for device, next due 25 Jun"),
-    ("9123456789", "Amit Patel",    "₹320",  "18 Jun 2026", "Basic 2GB/day",             "ACC003", "₹320 on 18 May",  "Account blocked due to non-payment, needs ₹320 to unblock"),
-    ("8800001234", "Sunita Devi",   "₹180",  "30 Jun 2026", "Voice Only Pack",           "ACC004", "₹180 on 1 Jun",   ""),
-    ("7700123456", "Vijay Singh",   "₹1200", "15 Jun 2026", "5G Premium 200GB",          "ACC005", "₹1200 on 15 May", "Bill overdue by 2 days, late fee ₹50 will apply after 20 Jun"),
-    ("9988776655", "Kavita Mehta",  "₹650",  "22 Jun 2026", "Fiber Broadband 100Mbps",   "ACC006", "₹650 on 22 May",  ""),
-    ("8877665544", "Suresh Yadav",  "₹0",    "—",           "Prepaid 28-day ₹199",       "ACC007", "Recharged ₹199",  "Prepaid — current balance ₹45, validity expires 8 Jul 2026"),
-    ("7766554433", "Deepika Joshi", "₹3500", "10 Jun 2026", "Enterprise 1Gbps",          "ACC008", "₹3500 on 10 May", "Business account, GST: 24AABCS1429B1ZB"),
-    ("9900112233", "Mohammed Rafiq","₹550",  "28 Jun 2026", "Unlimited 5G",              "ACC009", "₹550 on 28 May",  ""),
-    ("8811223344", "Lakshmi Nair",  "₹230",  "5 Jul 2026",  "Student Pack 3GB/day",      "ACC010", "₹230 on 5 Jun",   ""),
+    # (mobile, name, bill_amount, due_date, plan, account_no, last_payment, notes)
+    ("9879001234", "Haresh Patel",     "₹1,840", "25 Jun 2026", "LT Domestic SP",     "12345678901", "₹1,200 on 15 May", "Prepaid smart meter — balance ₹320"),
+    ("9879001235", "Manish Shah",      "₹5,670", "20 Jun 2026", "LT Commercial",      "12345678903", "₹2,800 on 1 Jun",  "Outstanding ₹2,870 — disconnection risk"),
+    ("9879001236", "Priya Desai",      "₹3,200", "22 Jun 2026", "LT Agriculture",     "12345678902", "₹3,200 on 22 May", "Solar net meter — import 420 units, export 180 units"),
+    ("9879001237", "Ramesh Trivedi",   "₹720",   "28 Jun 2026", "LT Domestic 3P",     "12345678904", "₹720 on 28 May",   ""),
+    ("9879001238", "Bhavna Joshi",     "₹9,500", "15 Jun 2026", "HT Industrial",      "12345678905", "₹9,500 on 15 May", "HT consumer — demand 45 KVA"),
+    ("9879001239", "Suresh Prajapati", "₹410",   "30 Jun 2026", "LT Domestic BPL",    "12345678906", "₹410 on 30 May",   "BPL category — 30 units free per month"),
+    ("9879001240", "Meena Parmar",     "₹0",     "—",           "LT Domestic Prepaid","12345678907", "₹500 on 10 Jun",   "Prepaid — balance ₹45, low balance alert sent"),
+    ("9879001241", "Kiran Shah",       "₹2,100", "18 Jun 2026", "LT Commercial 3P",   "12345678908", "₹2,100 on 18 May", ""),
+    ("9879001242", "Dinesh Kumar",     "₹6,800", "12 Jun 2026", "LT Industrial",      "12345678909", "₹6,800 on 12 May", "Bill overdue — disconnection notice issued"),
+    ("9879001243", "Anjali Mehta",     "₹1,560", "24 Jun 2026", "LT Domestic Solar",  "12345678910", "₹1,560 on 24 May", "Solar rooftop — excess units credited annually in June"),
 ]
 
 
 async def _seed_accounts():
     async with _pool.acquire() as conn:
-        count = await conn.fetchval("SELECT COUNT(*) FROM mock_accounts")
-        if count == 0:
-            await conn.executemany(
-                """INSERT INTO mock_accounts
-                   (mobile, name, bill_amount, due_date, plan, account_no, last_payment, notes)
-                   VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
-                   ON CONFLICT (mobile) DO NOTHING""",
-                _DEFAULT_ACCOUNTS,
-            )
-            logger.info("Seeded %d demo accounts", len(_DEFAULT_ACCOUNTS))
+        await conn.executemany(
+            """INSERT INTO mock_accounts
+               (mobile, name, bill_amount, due_date, plan, account_no, last_payment, notes, updated_at)
+               VALUES ($1,$2,$3,$4,$5,$6,$7,$8, NOW())
+               ON CONFLICT (mobile) DO UPDATE SET
+                 name=$2, bill_amount=$3, due_date=$4, plan=$5,
+                 account_no=$6, last_payment=$7, notes=$8, updated_at=NOW()""",
+            _DEFAULT_ACCOUNTS,
+        )
+        logger.info("Upserted %d UGVCL demo accounts", len(_DEFAULT_ACCOUNTS))
 
 
 async def seed_dummy_calls():
@@ -128,6 +129,29 @@ async def log_call_event(room_name: str, event_type: str, content: str = ""):
             )
     except Exception as e:
         logger.warning("Failed to log call event: %s", e)
+
+
+async def get_account_by_number(number: str) -> dict | None:
+    """Look up a consumer by 10-digit mobile or 11-digit account_no."""
+    if _pool is None:
+        return None
+    number = number.strip()
+    async with _pool.acquire() as conn:
+        if len(number) == 10:
+            row = await conn.fetchrow(
+                "SELECT mobile, name, bill_amount, due_date, plan, account_no, last_payment, notes "
+                "FROM mock_accounts WHERE mobile=$1",
+                number,
+            )
+        elif len(number) == 11:
+            row = await conn.fetchrow(
+                "SELECT mobile, name, bill_amount, due_date, plan, account_no, last_payment, notes "
+                "FROM mock_accounts WHERE account_no=$1",
+                number,
+            )
+        else:
+            return None
+    return dict(row) if row else None
 
 
 async def get_mock_accounts() -> list[dict]:

@@ -1,33 +1,30 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: livekit
+  name: livekit-sip
   namespace: ai-voice
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: livekit
+      app: livekit-sip
   template:
     metadata:
       labels:
-        app: livekit
+        app: livekit-sip
     spec:
       hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet
-      enableServiceLinks: false
       initContainers:
-        # Injects API key/secret from Secret into livekit.yaml at startup
+        # Substitute ${LIVEKIT_API_KEY} and ${LIVEKIT_API_SECRET} from Secret into sip.yaml
         - name: config-init
           image: alpine:3.19
           command:
             - sh
             - -c
             - |
-              cp /config-src/livekit-template.yaml /config/livekit.yaml
-              # Append keys section with real credentials from Secret
-              printf "\nkeys:\n  %s: %s\n" "$LIVEKIT_API_KEY" "$LIVEKIT_API_SECRET" \
-                >> /config/livekit.yaml
+              apk add --no-cache gettext
+              envsubst < /config-src/sip.yaml > /config/sip.yaml
           env:
             - name: LIVEKIT_API_KEY
               valueFrom:
@@ -46,48 +43,42 @@ spec:
             - name: config
               mountPath: /config
       containers:
-        - name: livekit
-          image: livekit/livekit-server:v1.8.3      # pinned version
-          args: ["--config", "/etc/livekit/livekit.yaml"]
+        - name: livekit-sip
+          image: livekit/sip:latest
+          args: ["--config", "/etc/livekit-sip/sip.yaml"]
           ports:
-            - containerPort: 7880
-              protocol: TCP
-            - containerPort: 7881
-              protocol: TCP
-            - containerPort: 7882
+            - containerPort: 5080
               protocol: UDP
+              name: sip-udp
+            - containerPort: 5080
+              protocol: TCP
+              name: sip-tcp
           volumeMounts:
             - name: config
-              mountPath: /etc/livekit
+              mountPath: /etc/livekit-sip
               readOnly: true
-            - name: data
-              mountPath: /data
           resources:
             requests:
-              cpu: "2"
-              memory: "2Gi"
+              cpu: "500m"
+              memory: "256Mi"
             limits:
-              cpu: "8"
-              memory: "8Gi"
+              cpu: "2"
+              memory: "1Gi"
           readinessProbe:
-            httpGet:
-              path: /
-              port: 7880
+            tcpSocket:
+              port: 5080
             initialDelaySeconds: 10
-            periodSeconds: 5
+            periodSeconds: 10
           livenessProbe:
-            httpGet:
-              path: /
-              port: 7880
-            initialDelaySeconds: 30
-            periodSeconds: 15
+            tcpSocket:
+              port: 5080
+            initialDelaySeconds: 20
+            periodSeconds: 30
             failureThreshold: 3
       volumes:
         - name: config-src
-          configMap:
-            name: livekit-server-config
+          hostPath:
+            path: /opt/ai-voice-stack/livekit-sip
+            type: Directory
         - name: config
           emptyDir: {}
-        - name: data
-          persistentVolumeClaim:
-            claimName: livekit-pvc

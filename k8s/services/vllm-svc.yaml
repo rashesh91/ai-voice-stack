@@ -3,10 +3,22 @@ kind: Service
 metadata:
   name: vllm
   namespace: ai-voice
+  annotations:
+    note: "Selector-less service — routes to Docker vllm-server on the host via manual Endpoints.
+           When vllm is migrated to k8s pod, add selector: app: vllm and remove the Endpoints resource."
 spec:
-  selector:
-    app: vllm
   ports:
     - port: 8000
       targetPort: 8000
   type: ClusterIP
+---
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: vllm
+  namespace: ai-voice
+subsets:
+  - addresses:
+      - ip: 217.18.55.59   # node IP where Docker vllm-server listens on :8000
+    ports:
+      - port: 8000

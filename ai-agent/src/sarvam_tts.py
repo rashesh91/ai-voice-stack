@@ -16,15 +16,23 @@ SARVAM_TTS_URL = "https://api.sarvam.ai/text-to-speech"
 logger = logging.getLogger(__name__)
 
 LANGUAGE_TO_SPEAKER = {
-    "hi-IN": "anushka",
-    "ta-IN": "anushka",
-    "te-IN": "anushka",
-    "kn-IN": "anushka",
-    "ml-IN": "anushka",
-    "bn-IN": "anushka",
-    "gu-IN": "anushka",
-    "mr-IN": "anushka",
-    "en-IN": "anushka",
+    "gu-IN": "vidya",
+    "hi-IN": "manisha",
+    "en-IN": "ritu",
+    "ta-IN": "ritu",
+    "te-IN": "ritu",
+    "kn-IN": "ritu",
+    "ml-IN": "ritu",
+    "bn-IN": "ritu",
+    "mr-IN": "ritu",
+}
+
+_EMOTION_PARAMS: dict[str, dict[str, float]] = {
+    "normal":     {"pace": 0.9,  "pitch": 0},
+    "empathy":    {"pace": 0.78, "pitch": -0.05},
+    "urgent":     {"pace": 1.05, "pitch": 0.05},
+    "positive":   {"pace": 0.88, "pitch": 0.03},
+    "frustrated": {"pace": 0.80, "pitch": -0.03},
 }
 
 _SENTENCE_END = re.compile(r'(?<=[.?!।॥])\s+')
@@ -49,9 +57,17 @@ class SarvamTTS(tts.TTS):
         )
         self._api_key = api_key
         self._language = language
-        self._speaker = LANGUAGE_TO_SPEAKER.get(language, "anushka")
+        self._speaker = LANGUAGE_TO_SPEAKER.get(language, "ritu")
+        self._pace: float = 0.9
+        self._pitch: float = 0.0
         self._pcm_cache: dict[str, bytes] = {}
         self._warmup_tasks: list[asyncio.Task] = []
+
+    def set_emotion(self, emotion: str) -> None:
+        params = _EMOTION_PARAMS.get(emotion, _EMOTION_PARAMS["normal"])
+        self._pace = params["pace"]
+        self._pitch = params["pitch"]
+        logger.debug("emotion=%s pace=%.2f pitch=%.2f", emotion, self._pace, self._pitch)
 
     def start_prewarm(self, text: str) -> None:
         """Start background TTS generation for text sentences; results go to cache."""
@@ -103,12 +119,11 @@ class SarvamTTS(tts.TTS):
             "inputs": [sentence],
             "target_language_code": self._language,
             "speaker": self._speaker,
-            "pitch": 0,
-            "pace": 1.1,
-            "loudness": 1.5,
+            "pace": self._pace,
+            "pitch": self._pitch,
             "speech_sample_rate": 16000,
-            "enable_preprocessing": True,
-            "model": "bulbul:v2",
+            "model": "bulbul:v3",
+            "pronunciation_dict_id": "p_6c46665c",
         }
         headers = {
             "api-subscription-key": self._api_key,

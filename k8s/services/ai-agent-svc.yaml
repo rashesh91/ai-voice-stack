@@ -6,7 +6,8 @@ metadata:
 spec:
   selector:
     app: ai-agent
+  type: NodePort
   ports:
-    - port: 8080
-      targetPort: 8080
-  type: ClusterIP
+    - port: 8082
+      targetPort: 8082
+      nodePort: 30082

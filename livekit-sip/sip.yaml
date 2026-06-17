@@ -1,11 +1,13 @@
 log_level: info
 
-api_key: lk-jzdld9kposbl6ovy
-api_secret: pO8Elc0GNmhrCvC6ihWFAm2oXqg08CchnVuZzJ1fUFKCfKcw
-ws_url: ws://217.18.55.105:30880
+# Credentials injected from k8s Secret at startup via initContainer (see livekit-sip-deploy.yaml)
+# This file is a template — the initContainer substitutes ${LIVEKIT_API_KEY} and ${LIVEKIT_API_SECRET}
+api_key: ${LIVEKIT_API_KEY}
+api_secret: ${LIVEKIT_API_SECRET}
+ws_url: ws://livekit.ai-voice.svc.cluster.local:7880
 
 redis:
-  address: 10.43.206.140:6379
+  address: redis.ai-voice.svc.cluster.local:6379
   db: 1
 
 sip_port: 5080

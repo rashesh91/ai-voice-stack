@@ -45,29 +45,29 @@ async def _get_pool() -> asyncpg.Pool:
 
 # Cycling dialogue for the live simulator (user_speech, agent_speech) pairs
 _LIVE_DIALOGUES = {
-    "demo_live_priya_9876543211": [
-        ("मेरा इंटरनेट बहुत धीमा चल रहा है।",
-         "मैं आपकी लाइन चेक कर रहा हूँ। कृपया अपना राउटर रीस्टार्ट करें और 2 मिनट बाद चेक करें।"),
-        ("रीस्टार्ट किया लेकिन अभी भी धीमा है।",
-         "आपके एरिया में नेटवर्क मेंटेनेंस चल रही है जो 30 मिनट में पूरी हो जाएगी।"),
-        ("ठीक है। मेरी EMI का अगला पेमेंट कब है?",
-         "आपकी अगली EMI ₹199 की 25 जून 2026 को देय है।"),
-        ("क्या मैं EMI डेट बदल सकती हूँ?",
-         "जी हाँ, आप EMI डेट महीने में एक बार बदल सकती हैं। कौन सी तारीख चाहिए?"),
-        ("1 तारीख कर दीजिए।",
-         "आपकी EMI डेट 1 जुलाई 2026 से 1 तारीख पर सेट कर दी गई है।"),
+    "demo_live_haresh_12345678901": [
+        ("સાહેબ, મારો consumer number 12345678901 છે. મારું bill કેટલું છે?",
+         "Haresh Patel સાહેબ, આ મહિને આપનું bill ₹1,840 છે, જે 25 જૂન 2026 સુધી ભરવાનું છે."),
+        ("Smart meter છે, તો online payment ક્યાં કરું?",
+         "mpay.guvnl.in ઉપર online payment કરો, અથવા NEFT દ્વારા UGVCLLTZ12345678901 account number ઉપર Bank of Baroda માં ભરો."),
+        ("Prepaid balance ક્યાં check કરી શકાય?",
+         "www.ugvcl.com ઉપર Consumer > Online Service > Consumer Service માં login કરી prepaid balance check કરી શકો."),
+        ("Balance ₹50 થી ઓછો થાય ત્યારે શું થાય?",
+         "Prepaid smart meter માં balance ₹50 થી ઓછો થાય ત્યારે low balance SMS આવે, અને ₹0 થાય ત્યારે supply automatically disconnect થઈ જાય."),
+        ("ઠીક છે, આભાર.",
+         "UGVCL customer care માં call કરવા બદલ આભાર. 19121 ઉપર ક્યારેય પણ contact કરી શકો."),
     ],
-    "demo_live_vijay_7700123456": [
-        ("My bill shows a late fee of ₹50. Can you waive it?",
-         "I can see your bill of ₹1200 was due on 15 Jun. Since this is your first late payment, I can waive the ₹50 fee as a one-time courtesy."),
-        ("Yes please, thank you!",
-         "Done! The ₹50 late fee has been waived. Your net payable amount is now ₹1200."),
-        ("Can I set up auto-pay to avoid this in future?",
-         "Absolutely! I can set up auto-pay via your UPI or bank account. Which would you prefer?"),
-        ("UPI please, 7700123456@paytm",
-         "Auto-pay has been set up with UPI ID 7700123456@paytm. Your bill will be auto-debited on the 15th every month."),
-        ("What is my 5G coverage status?",
-         "Your area has 5G coverage on our premium band. You're already on the 5G Premium 200GB plan so you're all set!"),
+    "demo_live_manish_12345678903": [
+        ("My consumer number is 12345678903. My bill is very high this month.",
+         "Mr. Manish Shah, your LT Commercial bill is ₹5,670 due on 20 Jun 2026. A partial payment of ₹2,800 was received on 1 Jun, leaving ₹2,870 outstanding."),
+        ("I already paid ₹2,800 but still showing arrears?",
+         "Your payment of ₹2,800 was received on 1 Jun, but the bill cut-off date was before that. The remaining ₹2,870 is overdue. Please pay immediately to avoid disconnection."),
+        ("How can I pay the balance now?",
+         "Pay online at mpay.guvnl.in or via NEFT to UGVCLLTZ12345678903 at Bank of Baroda, IFSC BARB0ALKAPU. Payment reflects within 3 working days."),
+        ("Will my connection be cut if I pay today?",
+         "If you pay today, disconnection will be held. Please call 19121 after payment with your transaction receipt to expedite reconnection."),
+        ("Thank you, I will pay right now.",
+         "Thank you, Mr. Shah. Keep your payment receipt safe. For any issues call UGVCL toll-free 19121 or visit your nearest SDN office."),
     ],
 }
 
@@ -82,26 +82,33 @@ async def _seed_dummy_calls(pool: asyncpg.Pool):
 
         # --- Completed calls (older, have call_ended) ---
         ended_rows = [
-            ("demo_room_rajesh_9876543210_001", "call_started",  ""),
-            ("demo_room_rajesh_9876543210_001", "user_speech",   "नमस्ते, मेरा बिल कितना है?"),
-            ("demo_room_rajesh_9876543210_001", "agent_speech",  "नमस्ते! आपका इस महीने का बिल ₹450 है, जो 20 जून 2026 तक देय है।"),
-            ("demo_room_rajesh_9876543210_001", "user_speech",   "क्या मैं ऑनलाइन पेमेंट कर सकता हूँ?"),
-            ("demo_room_rajesh_9876543210_001", "agent_speech",  "जी हाँ, आप हमारी वेबसाइट या मोबाइल ऐप से UPI, नेट बैंकिंग या क्रेडिट कार्ड से पेमेंट कर सकते हैं।"),
-            ("demo_room_rajesh_9876543210_001", "call_ended",    ""),
-            ("demo_room_amit_9123456789_002",   "call_started",  ""),
-            ("demo_room_amit_9123456789_002",   "user_speech",   "My account is blocked, please help me."),
-            ("demo_room_amit_9123456789_002",   "agent_speech",  "I can see your account ACC003 is blocked due to a pending payment of ₹320. Would you like to pay now?"),
-            ("demo_room_amit_9123456789_002",   "user_speech",   "Yes, how do I pay via UPI?"),
-            ("demo_room_amit_9123456789_002",   "agent_speech",  "You can use UPI ID: aivoice@upi. Service restores within 30 minutes of payment."),
-            ("demo_room_amit_9123456789_002",   "user_speech",   "Done, I paid. Thank you!"),
-            ("demo_room_amit_9123456789_002",   "agent_speech",  "Great! Payment received. Your service will be restored shortly."),
-            ("demo_room_amit_9123456789_002",   "call_ended",    ""),
-            ("demo_room_suresh_8877665544_003", "call_started",  ""),
-            ("demo_room_suresh_8877665544_003", "user_speech",   "मेरे प्रीपेड प्लान की वैलिडिटी कब खत्म होगी?"),
-            ("demo_room_suresh_8877665544_003", "agent_speech",  "आपका ₹199 प्लान 8 जुलाई 2026 को समाप्त होगा। अभी बैलेंस ₹45 है।"),
-            ("demo_room_suresh_8877665544_003", "user_speech",   "रिचार्ज कैसे करूँ?"),
-            ("demo_room_suresh_8877665544_003", "agent_speech",  "आप हमारी ऐप, वेबसाइट, या नजदीकी रिटेलर से ₹199 का रिचार्ज करवा सकते हैं।"),
-            ("demo_room_suresh_8877665544_003", "call_ended",    ""),
+            # Call 1 – Gujarati: High bill query (Ramaben Desai, solar net meter)
+            ("demo_room_ramaben_12345678902_001", "call_started",  ""),
+            ("demo_room_ramaben_12345678902_001", "user_speech",   "સાહેબ, મારો consumer number 12345678902 છે. આ વખતે bill ઘણું વધારે આવ્યું છે."),
+            ("demo_room_ramaben_12345678902_001", "agent_speech",  "Ramaben Desai સાહેબ, આ મહિને import 310 units અને export 120 units. Billed units: 190. Bill ₹3,240 છે, 28 જૂન 2026 સુધી ભરવાનું."),
+            ("demo_room_ramaben_12345678902_001", "user_speech",   "Solar export amount ક્યારે bank account માં આવે?"),
+            ("demo_room_ramaben_12345678902_001", "agent_speech",  "Solar export credit June મહિનામાં automatically bank account માં credit થાય. UGVCL SDN office માં written application submit કરો."),
+            ("demo_room_ramaben_12345678902_001", "user_speech",   "NEFT payment ક્યાં કરવાનું?"),
+            ("demo_room_ramaben_12345678902_001", "agent_speech",  "UGVCLLTZ12345678902 — Bank of Baroda, IFSC BARB0ALKAPU, current account. Payment 3 working days માં portal ઉપર દેખાશે."),
+            ("demo_room_ramaben_12345678902_001", "call_ended",    ""),
+            # Call 2 – English: Meter reading dispute (Jayaben Trivedi)
+            ("demo_room_jayaben_12345678904_002", "call_started",  ""),
+            ("demo_room_jayaben_12345678904_002", "user_speech",   "My consumer number is 12345678904. My meter reading seems wrong this month."),
+            ("demo_room_jayaben_12345678904_002", "agent_speech",  "Ms. Jayaben Trivedi, a meter reading correction request was submitted on 10 Jun 2026. It is currently under review by the SDN office."),
+            ("demo_room_jayaben_12345678904_002", "user_speech",   "What documents do I need for the correction?"),
+            ("demo_room_jayaben_12345678904_002", "agent_speech",  "Please provide a photo of the meter KWH reading taken within 5 days of the bill date, your Aadhaar card copy, and electricity bill copy at the UGVCL SDN office."),
+            ("demo_room_jayaben_12345678904_002", "user_speech",   "Should I pay the bill or wait for the correction?"),
+            ("demo_room_jayaben_12345678904_002", "agent_speech",  "You may pay the undisputed amount now to avoid disconnection. The corrected amount will be adjusted in the next bill cycle."),
+            ("demo_room_jayaben_12345678904_002", "call_ended",    ""),
+            # Call 3 – Hinglish: Disconnection notice (Kiritbhai Amin)
+            ("demo_room_kirit_12345678911_003",  "call_started",  ""),
+            ("demo_room_kirit_12345678911_003",  "user_speech",   "Mera consumer number 12345678911 hai. Disconnection notice mila hai, please help karo."),
+            ("demo_room_kirit_12345678911_003",  "agent_speech",  "Kiritbhai Amin saheb, aapka ₹4,320 ka bill 12 Jun 2026 ko due tha. Bill overdue hone ke karan disconnection notice 13 Jun ko bheja gaya hai."),
+            ("demo_room_kirit_12345678911_003",  "user_speech",   "Abhi payment karu toh light band nahi hogi?"),
+            ("demo_room_kirit_12345678911_003",  "agent_speech",  "Agar aaj payment karte hain toh disconnection rok sakta hai. Payment ke baad transaction receipt ke saath 19121 par call karein reconnection ke liye."),
+            ("demo_room_kirit_12345678911_003",  "user_speech",   "mpay.guvnl.in se pay kar sakta hun?"),
+            ("demo_room_kirit_12345678911_003",  "agent_speech",  "Haan, mpay.guvnl.in par ya NEFT se UGVCLLTZ12345678911, Bank of Baroda, IFSC BARB0ALKAPU mein payment karein. Receipt 3 working days mein portal par dikhai degi."),
+            ("demo_room_kirit_12345678911_003",  "call_ended",    ""),
         ]
         offsets = list(range(len(ended_rows) + 20, 20, -1))
         for (room, etype, content), offset in zip(ended_rows, offsets):
@@ -113,12 +120,12 @@ async def _seed_dummy_calls(pool: asyncpg.Pool):
 
         # --- Active / live calls (NO call_ended, recent timestamps) ---
         live_rows = [
-            ("demo_live_priya_9876543211",  "call_started", ""),
-            ("demo_live_priya_9876543211",  "user_speech",  "नमस्ते, मेरा नाम Priya Sharma है। मेरा अकाउंट नंबर ACC002 है।"),
-            ("demo_live_priya_9876543211",  "agent_speech", "नमस्ते Priya जी! आपका अकाउंट मिल गया। कैसे मदद करूँ?"),
-            ("demo_live_vijay_7700123456",  "call_started", ""),
-            ("demo_live_vijay_7700123456",  "user_speech",  "Hi, this is Vijay Singh. Account ACC005."),
-            ("demo_live_vijay_7700123456",  "agent_speech", "Hello Vijay! I can see your 5G Premium 200GB plan. How can I help you today?"),
+            ("demo_live_haresh_12345678901",  "call_started", ""),
+            ("demo_live_haresh_12345678901",  "user_speech",  "સાહેબ, મારો consumer number 12345678901 છે. મારું bill કેટલું છે?"),
+            ("demo_live_haresh_12345678901",  "agent_speech", "Haresh Patel સાહેબ, આ મહિને આપનું bill ₹1,840 છે, જે 25 જૂન 2026 સુધી ભરવાનું છે."),
+            ("demo_live_manish_12345678903",  "call_started", ""),
+            ("demo_live_manish_12345678903",  "user_speech",  "My consumer number is 12345678903. My bill is very high this month."),
+            ("demo_live_manish_12345678903",  "agent_speech", "Mr. Manish Shah, your LT Commercial bill is ₹5,670 due 20 Jun 2026. A partial payment of ₹2,800 was received, leaving ₹2,870 outstanding."),
         ]
         live_offsets = list(range(len(live_rows), 0, -1))
         for (room, etype, content), offset in zip(live_rows, live_offsets):
@@ -178,6 +185,54 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+
+
+# ── Health check ──────────────────────────────────────────────────────────────
+
+@app.get("/health")
+async def health():
+    import httpx, redis.asyncio as aioredis
+    status: dict = {"status": "ok"}
+    errors: list[str] = []
+
+    # PostgreSQL
+    try:
+        pool = await _get_pool()
+        async with pool.acquire() as conn:
+            await conn.fetchval("SELECT 1")
+        status["db"] = "ok"
+    except Exception as exc:
+        status["db"] = "error"
+        errors.append(f"db: {exc}")
+
+    # Redis
+    try:
+        redis_url = os.environ.get("REDIS_URL", "redis://redis:6379/0")
+        r = aioredis.from_url(redis_url, socket_connect_timeout=2)
+        await r.ping()
+        await r.aclose()
+        status["redis"] = "ok"
+    except Exception as exc:
+        status["redis"] = "error"
+        errors.append(f"redis: {exc}")
+
+    # vLLM
+    try:
+        vllm_url = os.environ.get("VLLM_BASE_URL", "http://vllm:8000/v1").replace("/v1", "")
+        async with httpx.AsyncClient(timeout=3.0) as client:
+            resp = await client.get(f"{vllm_url}/health")
+        status["vllm"] = "ok" if resp.status_code == 200 else f"http_{resp.status_code}"
+        if resp.status_code != 200:
+            errors.append(f"vllm: http {resp.status_code}")
+    except Exception as exc:
+        status["vllm"] = "error"
+        errors.append(f"vllm: {exc}")
+
+    if errors:
+        status["status"] = "degraded"
+        status["errors"] = errors
+        return JSONResponse(status_code=503, content=status)
+    return status
 
 
 # ── Calls API ─────────────────────────────────────────────────────────────────
@@ -524,6 +579,20 @@ tbody td{padding:9px 14px;vertical-align:middle;color:#cbd5e1}
 }
 .badge-overdue{background:rgba(69,10,10,.5);color:#fca5a5;border-color:rgba(239,68,68,.2)}
 .badge-blocked{background:rgba(120,53,15,.5);color:#fcd34d;border-color:rgba(245,158,11,.2)}
+.test-badge{
+  display:inline-flex;align-items:center;gap:3px;
+  background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.3);
+  color:#fbbf24;font-size:.58rem;font-weight:700;padding:1px 6px;border-radius:9999px;
+  letter-spacing:.06em;
+}
+.lang-chip{
+  display:inline-block;font-size:.58rem;font-weight:700;
+  padding:1px 6px;border-radius:4px;letter-spacing:.06em;
+}
+.lang-gu{background:rgba(16,185,129,.15);color:#34d399;border:1px solid rgba(16,185,129,.3)}
+.lang-hi{background:rgba(168,85,247,.15);color:#c084fc;border:1px solid rgba(168,85,247,.3)}
+.lang-en{background:rgba(59,130,246,.15);color:#60a5fa;border:1px solid rgba(59,130,246,.3)}
+.lang-edge{background:rgba(239,68,68,.15);color:#f87171;border:1px solid rgba(239,68,68,.3)}
 
 /* ── Modal ── */
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(4px);z-index:100;align-items:center;justify-content:center}
@@ -723,9 +792,21 @@ function fmtTime(iso) {
   return new Date(iso).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
 }
 function fmtRoom(room) {
+  // Test rooms: show up to 4 parts (e.g. test_gu_bill_01)
+  if (room.startsWith('test_')) {
+    const p = room.split('_');
+    return p.slice(0,4).join('_');
+  }
   const p=room.split('_');
   if (p.length>=4) return p.slice(0,3).join('_')+'…';
   return room.length>28 ? room.slice(0,28)+'…' : room;
+}
+function langChip(room) {
+  if (/_gu_/.test(room)) return '<span class="lang-chip lang-gu">GU</span>';
+  if (/_hi_/.test(room)) return '<span class="lang-chip lang-hi">HI</span>';
+  if (/_en_/.test(room)) return '<span class="lang-chip lang-en">EN</span>';
+  if (/_edge_/.test(room)) return '<span class="lang-chip lang-edge">EDGE</span>';
+  return '';
 }
 function esc(s){
   return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -775,10 +856,13 @@ async function loadCalls() {
     const dur = c.last_event && c.started_at ? fmtDur(c.started_at, c.last_event) : '';
     const liveBadge = c.is_active
       ? `<span class="live-badge"><span class="live-badge-dot"></span>LIVE</span>` : '';
+    const testBadge = c.room_name.startsWith('test_')
+      ? `<span class="test-badge">TEST</span>` : '';
+    const lc = langChip(c.room_name);
     return `<div class="call-row${liveClass}${selClass}" onclick="selectRoom('${esc(c.room_name)}')">
       <div class="cr-room">${esc(fmtRoom(c.room_name))}</div>
       <div class="cr-meta">
-        ${liveBadge}
+        ${liveBadge}${testBadge}${lc}
         <span>${fmtTime(c.started_at)}</span>
         <span class="cr-turns">↕ ${c.turns}</span>
         ${dur?`<span>${dur}</span>`:''}
@@ -1024,18 +1108,20 @@ async function deleteAccount(mobile,name) {
 }
 
 async function resetToDefaults() {
-  if (!confirm('Reset to 10 default demo accounts?')) return;
+  if (!confirm('Reset to 12 default UGVCL demo accounts?')) return;
   const defaults = [
-    {mobile:'9876543210',name:'Ramesh Kumar',bill_amount:'₹450',due_date:'20 Jun 2026',plan:'99 GB Data Pack',account_no:'ACC001',last_payment:'₹450 on 15 May',notes:''},
-    {mobile:'9876543211',name:'Priya Sharma',bill_amount:'₹780',due_date:'25 Jun 2026',plan:'Unlimited Calls',account_no:'ACC002',last_payment:'₹780 on 10 May',notes:'Has EMI of ₹199/month for device, next due 25 Jun'},
-    {mobile:'9123456789',name:'Amit Patel',bill_amount:'₹320',due_date:'18 Jun 2026',plan:'Basic 2GB/day',account_no:'ACC003',last_payment:'₹320 on 18 May',notes:'Account blocked due to non-payment, needs ₹320 to unblock'},
-    {mobile:'8800001234',name:'Sunita Devi',bill_amount:'₹180',due_date:'30 Jun 2026',plan:'Voice Only Pack',account_no:'ACC004',last_payment:'₹180 on 1 Jun',notes:''},
-    {mobile:'7700123456',name:'Vijay Singh',bill_amount:'₹1200',due_date:'15 Jun 2026',plan:'5G Premium 200GB',account_no:'ACC005',last_payment:'₹1200 on 15 May',notes:'Bill overdue by 2 days, late fee ₹50 will apply after 20 Jun'},
-    {mobile:'9988776655',name:'Kavita Mehta',bill_amount:'₹650',due_date:'22 Jun 2026',plan:'Fiber Broadband 100Mbps',account_no:'ACC006',last_payment:'₹650 on 22 May',notes:''},
-    {mobile:'8877665544',name:'Suresh Yadav',bill_amount:'₹0',due_date:'—',plan:'Prepaid 28-day ₹199',account_no:'ACC007',last_payment:'Recharged ₹199',notes:'Prepaid — current balance ₹45, validity expires 8 Jul 2026'},
-    {mobile:'7766554433',name:'Deepika Joshi',bill_amount:'₹3500',due_date:'10 Jun 2026',plan:'Enterprise 1Gbps',account_no:'ACC008',last_payment:'₹3500 on 10 May',notes:'Business account, GST: 24AABCS1429B1ZB'},
-    {mobile:'9900112233',name:'Mohammed Rafiq',bill_amount:'₹550',due_date:'28 Jun 2026',plan:'Unlimited 5G',account_no:'ACC009',last_payment:'₹550 on 28 May',notes:''},
-    {mobile:'8811223344',name:'Lakshmi Nair',bill_amount:'₹230',due_date:'5 Jul 2026',plan:'Student Pack 3GB/day',account_no:'ACC010',last_payment:'₹230 on 5 Jun',notes:''},
+    {mobile:'9879001001',name:'Haresh Patel',bill_amount:'₹1,840',due_date:'25 Jun 2026',plan:'LT Domestic – Single Phase',account_no:'12345678901',last_payment:'₹1,840 on 20 May 2026',notes:'Smart meter installed. Prepaid balance ₹320 remaining.'},
+    {mobile:'9879001002',name:'Ramaben Desai',bill_amount:'₹3,240',due_date:'28 Jun 2026',plan:'LT Domestic – Three Phase',account_no:'12345678902',last_payment:'₹3,240 on 28 May 2026',notes:'Solar net metering. Export this month: 120 units. Import: 310 units.'},
+    {mobile:'9879001003',name:'Manish Shah',bill_amount:'₹5,670',due_date:'20 Jun 2026',plan:'LT Commercial – Shop/Office',account_no:'12345678903',last_payment:'₹2,800 on 1 Jun 2026',notes:'Partial payment received. Balance ₹2,870 overdue. Account may be disconnected.'},
+    {mobile:'9879001004',name:'Jayaben Trivedi',bill_amount:'₹980',due_date:'30 Jun 2026',plan:'LT Domestic – Single Phase',account_no:'12345678904',last_payment:'₹980 on 30 May 2026',notes:'Meter reading disputed. Correction request submitted on 10 Jun 2026.'},
+    {mobile:'9879001005',name:'Bharat Solanki',bill_amount:'₹0',due_date:'—',plan:'LT Agriculture – Pump',account_no:'12345678905',last_payment:'₹4,500 lump sum on 1 Apr 2026',notes:'Annual flat rate scheme. Next assessment April 2027.'},
+    {mobile:'9879001006',name:'Priti Mehta',bill_amount:'₹2,150',due_date:'22 Jun 2026',plan:'LT Domestic – Three Phase',account_no:'12345678906',last_payment:'₹2,150 on 22 May 2026',notes:'Name change application pending. Current name: Priti R. Mehta.'},
+    {mobile:'9879001007',name:'Suresh Contractor',bill_amount:'₹18,400',due_date:'15 Jun 2026',plan:'HT – Industrial 11kV',account_no:'HT20803',last_payment:'₹18,400 on 15 May 2026',notes:'HT consumer. Max demand this month: 45 kVA. Power factor: 0.92.'},
+    {mobile:'9879001008',name:'Nalini Joshi',bill_amount:'₹1,260',due_date:'5 Jul 2026',plan:'LT Domestic – Single Phase',account_no:'12345678908',last_payment:'₹1,260 on 5 Jun 2026',notes:'Prepaid smart meter. Auto-disconnected when balance < ₹50.'},
+    {mobile:'9879001009',name:'Dinesh Parmar',bill_amount:'₹6,800',due_date:'18 Jun 2026',plan:'LT Commercial – Restaurant',account_no:'12345678909',last_payment:'₹6,800 on 18 May 2026',notes:'Load: 15 kW. Application for load increase to 25 kW filed on 8 Jun.'},
+    {mobile:'9879001010',name:'Geeta Rao',bill_amount:'₹740',due_date:'10 Jul 2026',plan:'LT Domestic – Single Phase',account_no:'12345678910',last_payment:'₹740 on 10 Jun 2026',notes:'New connection issued 1 Feb 2026. Security deposit: ₹500 paid.'},
+    {mobile:'9879001011',name:'Kiritbhai Amin',bill_amount:'₹4,320',due_date:'12 Jun 2026',plan:'LT Commercial – Cold Storage',account_no:'12345678911',last_payment:'₹4,320 on 12 May 2026',notes:'Bill overdue. Disconnection notice issued 13 Jun. Pay immediately to avoid disconnection.'},
+    {mobile:'9879001012',name:'Savitaben Nayak',bill_amount:'₹590',due_date:'2 Jul 2026',plan:'LT Domestic – BPL Subsidised',account_no:'12345678912',last_payment:'₹590 on 2 Jun 2026',notes:'BPL category – first 50 units free per month. Subsidy applied.'},
   ];
   for (const a of defaults)
     await fetch('/api/accounts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(a)});
